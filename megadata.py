@@ -4,6 +4,11 @@ from enum import Enum
 import itertools
 
 
+class PrintOpts:
+    verbose: bool = False
+    refdata: bytes = b""
+
+
 class Element(Enum):
     Normal = 0
     Fire = 1
@@ -130,6 +135,104 @@ class Library:
             ret[obj.mb].append(i)
         return ret
 
+    @classmethod
+    def getWeakerChip(cls, ind: int) -> int:
+        """
+        Given a chip index (library index, i.e starting with 1),
+        Returns a chip index of the next chip below in ability
+        (e.g HiCannon for M-Cannon)
+        returns 0 if there is no known weaker chip
+        """
+        # Chips which are exactly 1 unit stronger than the chip
+        # below
+        oneStronger = {
+            2,
+            3,
+            5,
+            6,
+            7,
+            9,
+            10,
+            11,
+            13,
+            14,
+            15,
+            17,
+            18,
+            19,
+            21,
+            22,
+            23,
+            34,
+            35,
+            41,
+            42,
+            44,
+            45,
+            56,
+            57,
+            64,
+            65,
+            67,
+            68,
+            70,
+            71,
+            73,
+            74,
+            76,
+            77,
+            79,
+            80,
+            85,
+            86,
+            88,
+            90,
+            96,
+            97,
+            99,
+            100,
+            105,
+            106,
+            118,
+            119,
+            120,
+            121,
+            122,
+            123,
+            124,
+            127,
+            128,
+            136,
+            137,
+            138,
+            139,
+            142,
+            143,
+            153,
+            154,
+            164,
+            165,
+            171,
+            239,
+            240,
+            241,
+            242,
+            243,
+        }
+        directMap = {
+            25: 23,  # LongSwrd > Sword
+            29: 26,  # Blades > Swords
+            30: 27,
+            31: 28,
+            54: 52,  # Trident > TripNdl
+        }
+        if ind in oneStronger:
+            return ind - 1
+        elif ind in directMap:
+            return directMap[ind]
+        else:
+            return 0
+
 
 class EncounterT:
     """
@@ -173,8 +276,14 @@ class EncounterT:
         )
 
     def __str__(self):
+        if PrintOpts.verbose:
+            getChipName = lambda idx: str(
+                DataType.ChipName.parse(PrintOpts.refdata, idx - 1)
+            )
+        else:
+            getChipName = lambda idx: str(idx)
         return (
-            f"idx: {self.idx} navi: {self.navi} chips: {self.chips} "
+            f"idx: {self.idx} navi: {getChipName(self.navi)} chips: [{', '.join(getChipName(c) for c in self.chips)}] "
             f"bTh: {self.slotBotThresh} tTh: {self.slotTopThresh} op: {self.op} altNavi: {self.altNavi}"
         )
 
@@ -302,6 +411,12 @@ class StringT:
         for lenI, sLen in enumerate(self.lengths):
             i = sLen - 1
             existingNumSize = 0
+            if MMChar.convFrom(self.chars[i]) == "+":
+                # For chips with a '+' attack value, we need to modify
+                # the serialization around this, it isn't at the end
+                i -= 1
+                valStr += "+"
+                existingNumSize += 1
             while MMChar.isEncodedDigit(self.chars[i]) and i >= 0:
                 i -= 1
                 existingNumSize += 1

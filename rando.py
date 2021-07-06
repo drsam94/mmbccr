@@ -8,11 +8,11 @@ import random
 import itertools
 
 
-def getValWithVar(num: int, var: float) -> int:
+def getValWithVar(num: int, var: float, floorVal: int) -> int:
     if num == 0:
         return 0
     var = num * (var / 100)
-    low = round(max(10, num - var))
+    low = round(max(10 + floorVal, num - var))
     high = round(min(2 ** 16, num + var))
     return round(random.randint(low, high), -1)
 
@@ -23,11 +23,16 @@ def randomizeChips(data: bytearray, config: configparser.ConfigParser):
         (config["ChipRange"], Library.standardChipRange()),
         (config["NaviRange"], Library.naviChipRange()),
     ):
-
         for key, val in variance.items():
             for i in R:
                 obj = type.parse(data, i)
-                newVal = getValWithVar(getattr(obj, key), int(val))
+                floorVal = 0
+                if config["ChipGlobal"]["preserveOrdering"]:
+                    # Preserve the relative power of chips
+                    weakerInd = Library.getWeakerChip(i + 1)
+                    if weakerInd != 0:
+                        floorVal = getattr(type.parse(data, i), key)
+                newVal = getValWithVar(getattr(obj, key), int(val), floorVal)
                 setattr(obj, key, newVal)
                 type.rewrite(data, i, obj)
 
@@ -123,6 +128,8 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
                 enc.chips[j] = 1 + random.choice(mbMap[sourceMb])
                 if not (doAtkFilter and hasBadAtkBooster(chipMap, enc, j)):
                     break
+        if choices.getboolean("randomizeNavi"):
+            enc.navi = random.choice(list(Library.naviChipRange()))
         writeEncs.append(enc)
     for i, enc in enumerate(writeEncs):
         type.rewrite(data, i, enc)
