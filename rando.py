@@ -23,16 +23,23 @@ def randomizeChips(data: bytearray, config: configparser.ConfigParser):
         (config["ChipRange"], Library.standardChipRange()),
         (config["NaviRange"], Library.naviChipRange()),
     ):
-        for key, val in variance.items():
-            for i in R:
-                obj = type.parse(data, i)
-                floorVal = 0
-                if config["ChipGlobal"]["preserveOrdering"]:
-                    # Preserve the relative power of chips
-                    weakerInd = Library.getWeakerChip(i + 1)
-                    if weakerInd != 0:
-                        floorVal = getattr(type.parse(data, i), key)
-                newVal = getValWithVar(getattr(obj, key), int(val), floorVal)
+        for i in R:
+            obj = type.parse(data, i)
+            weakerInd = 0
+            if config["ChipGlobal"]["preserveOrdering"]:
+                # Preserve the relative power of chips
+                weakerInd = Library.getWeakerChip(i + 1)
+            for key, _val in variance.items():
+                val = int(_val)
+                if val == 0:
+                    # variance of 0, continue
+                    continue
+                floorVal = (
+                    getattr(type.parse(data, weakerInd - 1), key)
+                    if weakerInd != 0
+                    else 0
+                )
+                newVal = getValWithVar(getattr(obj, key), val, floorVal)
                 setattr(obj, key, newVal)
                 type.rewrite(data, i, obj)
 
@@ -158,6 +165,10 @@ def main():
 
     byteData = bytearray(input.read())
 
+    if byteData[0xA0:0xB0] != b"BATTLECHIPGPA89E":
+        raise Exception(
+            "It appears you are trying to run on a non-Battle Chip Challenge ROM"
+        )
     randomizeChips(byteData, config)
     randomizeEncounters(byteData, config)
     randomizeNames(byteData, config)

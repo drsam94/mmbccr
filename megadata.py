@@ -30,7 +30,7 @@ class ChipT:
     def __init__(self, data: bytearray, offset: int):
         (
             self.hp,
-            self.effectIndex,
+            self.pri,
             self.ap,
             self.mb,
             self.flags,
@@ -47,7 +47,7 @@ class ChipT:
             data,
             offset,
             self.hp,
-            self.effectIndex,
+            self.pri,
             self.ap,
             self.mb,
             self.flags,
@@ -89,7 +89,7 @@ class ChipT:
 
     def __str__(self):
         return (
-            f"hp: {self.hp} ei: {self.effectIndex} ap: {self.ap} "
+            f"hp: {self.hp} pri: {self.pri} ap: {self.ap} "
             f"mb: {self.mb} rarity: {self.rarity} cat: {self.chipCategory} "
             f"hit: {self.getHitChance()} dodge: {self.getDodgeChance()} art: {self.artIndex} "
             f"pallette: {self.palleteIndex} elem: {self.getElement()} flags: {hex(self.flags)}"
@@ -141,7 +141,10 @@ class Library:
         Given a chip index (library index, i.e starting with 1),
         Returns a chip index of the next chip below in ability
         (e.g HiCannon for M-Cannon)
-        returns 0 if there is no known weaker chip
+        returns 0 if there is no known weaker chip.
+        Note that not all v1/v2/v3 relationships in chips are strict
+        relationships, e.g ZapRings which go up in power and down in
+        HP; those relationships we don't keep strictly
         """
         # Chips which are exactly 1 unit stronger than the chip
         # below
@@ -162,17 +165,13 @@ class Library:
             19,
             21,
             22,
-            23,
+            24,
             34,
             35,
-            41,
-            42,
             44,
             45,
             56,
             57,
-            64,
-            65,
             67,
             68,
             70,
@@ -183,41 +182,12 @@ class Library:
             77,
             79,
             80,
-            85,
-            86,
-            88,
-            90,
-            96,
-            97,
-            99,
-            100,
             105,
             106,
-            118,
-            119,
-            120,
-            121,
-            122,
-            123,
-            124,
-            127,
-            128,
             136,
             137,
             138,
             139,
-            142,
-            143,
-            153,
-            154,
-            164,
-            165,
-            171,
-            239,
-            240,
-            241,
-            242,
-            243,
         }
         directMap = {
             25: 23,  # LongSwrd > Sword
