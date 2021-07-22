@@ -3,18 +3,9 @@
 import sys
 import argparse
 from megadata import *
+from distribution import getValWithVar, getPoissonRandom
 import configparser
 import random
-import itertools
-
-
-def getValWithVar(num: int, var: float, floorVal: int) -> int:
-    if num == 0:
-        return 0
-    var = num * (var / 100)
-    low = round(max(10 + floorVal, num - var))
-    high = round(min(2 ** 16, num + var))
-    return round(random.randint(low, high), -1)
 
 
 def randomizeChips(data: bytearray, config: configparser.ConfigParser):
@@ -108,11 +99,15 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
     choices = config["Encounters"]
     if not choices.getboolean("randomizeChips"):
         return
-    doAtkFilter = choices.getboolean("smartAtkPlus")
     mbMap = Library.getMBMap(data)
     chipMap = Library.getChipMap(data)
     type = DataType.Encounter
     shuffledEncs = list(range(type.getArrayLength()))
+    doAtkFilter = choices.getboolean("smartAtkPlus")
+    randomOp = choices.getboolean("randomizeOperators")
+    fillChips = choices.getboolean("fillChips")
+    randomizeNavi = choices.getboolean("randomizeNavi")
+    poissonParam = choices.getfloat("upgradeChipParam", 0)
     if choices.getboolean("shuffle"):
         random.shuffle(shuffledEncs)
     writeEncs = []
@@ -120,22 +115,31 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
         i = shuffledEncs[i]
         enc = type.parse(data, i)
         assert isinstance(enc, EncounterT)
-        if choices.getboolean("randomizeOperators"):
+        if randomOp:
             enc.op = random.randint(0, 125)
         for j, chip in enumerate(enc.chips):
-            sourceMb = 0
             if chip == 0:
-                if choices.getboolean("fillChips"):
-                    sourceMb = 10
-                else:
+                if not fillChips:
                     continue
+                sourceMb = 0
             else:
                 sourceMb = chipMap[chip - 1].mb
-            while True:
-                enc.chips[j] = 1 + random.choice(mbMap[sourceMb])
-                if not (doAtkFilter and hasBadAtkBooster(chipMap, enc, j)):
-                    break
-        if choices.getboolean("randomizeNavi"):
+
+            sourceMb = max(10, sourceMb + 10 * getPoissonRandom(poissonParam))
+            origSouceMb = sourceMb
+            myMap: List[int] = []
+            while len(myMap) == 0 and sourceMb > 0:
+                if sourceMb in mbMap:
+                    myMap = mbMap[sourceMb]
+                sourceMb -= 10
+            if len(myMap) == 0:
+                enc.chips[j] = 0
+            else:
+                while True:
+                    enc.chips[j] = 1 + random.choice(myMap)
+                    if not (doAtkFilter and hasBadAtkBooster(chipMap, enc, j)):
+                        break
+        if randomizeNavi:
             enc.navi = random.choice(list(Library.naviChipRange()))
         writeEncs.append(enc)
     for i, enc in enumerate(writeEncs):

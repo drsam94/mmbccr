@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+#Editor files
+.mypy_cache/
+.vscode/
+
 # ROM-related files
 *.gba
 *.sav

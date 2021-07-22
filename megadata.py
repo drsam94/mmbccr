@@ -77,6 +77,7 @@ class ChipT:
     # Slasher = 0x3c0 RCnt100
     # FireRate = 0x13a0 Cnt120
     # GutPunch 0x805
+    # 0x25 -> 'Fire type all add navi attack
 
     def getElement(self) -> Element:
         return Element((self.flags // 0x1000) & 0x7)
