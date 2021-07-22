@@ -1,5 +1,8 @@
 # mmbccr
- A Randomizer for Megaman Battlechip Challenge
+A Randomizer for Megaman Battlechip Challenge. Only has a CLI
+
+For inquiries, either post issues/pull requests to github or contact
+root@melancholytree.com
 
 # How to use
  Requires a modern version of python (>= 3.6), and a ROM of Megaman Battlechip challenge
@@ -13,7 +16,7 @@
 * strconv.py: Encode/Decode a string to bcc format
 * distribution.py: A tool to play with the random distribtions used in the randomizer
 # Process
-    Some documentation of how I went through finding out how the game stores data
+Some documentation of how I went through finding out how the game stores data
 * Play with memory, see where stuff changes
 * Look in library, look for places in memory 23 <-> 16 swapping chips
 * Identify folder layout order
