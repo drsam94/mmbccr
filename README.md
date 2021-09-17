@@ -2,7 +2,7 @@
 A Randomizer for Megaman Battlechip Challenge. Only has a CLI
 
 For inquiries, either post issues/pull requests to github or contact
-root@melancholytree.com
+sam@samdonow.com
 
 # How to use
  Requires a modern version of python (>= 3.6), and a ROM of Megaman Battlechip challenge
