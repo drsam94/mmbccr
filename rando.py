@@ -6,6 +6,7 @@ from megadata import *
 from distribution import getValWithVar, getPoissonRandom
 import configparser
 import random
+from typing import Optional
 
 
 def randomizeChips(data: bytearray, config: configparser.ConfigParser):
@@ -30,7 +31,7 @@ def randomizeChips(data: bytearray, config: configparser.ConfigParser):
                     if weakerInd != 0
                     else 0
                 )
-                newVal = getValWithVar(getattr(obj, key), val, floorVal)
+                newVal = getValWithVar(getattr(obj, key), float(val), floorVal)
                 setattr(obj, key, newVal)
                 type.rewrite(data, i, obj)
 
@@ -146,6 +147,24 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
         type.rewrite(data, i, enc)
 
 
+def randomize(
+    byteData: bytearray, config: configparser.ConfigParser, seed: Optional[int]
+) -> int:
+    if not seed:
+        seed = random.randint(0, 2 ** 64)
+    random.seed(seed)
+    print(f"Randomizing with seed {seed}")
+    if byteData[0xA0:0xB0] != b"BATTLECHIPGPA89E":
+        raise Exception(
+            "It appears you are trying to run on a non-Battle Chip Challenge ROM"
+        )
+    randomizeChips(byteData, config)
+    randomizeEncounters(byteData, config)
+    randomizeNames(byteData, config)
+
+    return seed
+
+
 def main():
     parser = argparse.ArgumentParser(
         "rando", description="A randomizer for Megaman Battlechip Challenge"
@@ -161,21 +180,11 @@ def main():
     config = configparser.ConfigParser()
     if args.conf:
         config.read(args.conf)
-    if not args.seed:
-        args.seed = random.randint(0, 2 ** 64)
-    random.seed(args.seed)
-    print(f"Randomizing with seed {args.seed}")
     input = open(args.infile, "rb")
 
     byteData = bytearray(input.read())
 
-    if byteData[0xA0:0xB0] != b"BATTLECHIPGPA89E":
-        raise Exception(
-            "It appears you are trying to run on a non-Battle Chip Challenge ROM"
-        )
-    randomizeChips(byteData, config)
-    randomizeEncounters(byteData, config)
-    randomizeNames(byteData, config)
+    randomize(byteData, config, args.seed)
     outFile = open(args.outfile, "wb+")
     outFile.write(byteData)
 

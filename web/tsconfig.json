@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "noImplicitAny": true,
+        "removeComments": true,
+        "strictFunctionTypes": true,
+        "noImplicitThis": true,
+        "alwaysStrict": true,
+        "noUnusedLocals": true,
+        "noImplicitReturns": true,
+        "strict": true,
+        "charset": "ASCII",
+        "diagnostics": true,
+        "extendedDiagnostics": true,
+        "pretty": true,
+        "module": "AMD",
+        "outFile": "build/client.js",
+        "target": "es5"
+    },
+    "files": [
+        "client.ts"
+    ]
+}

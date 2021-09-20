@@ -20,6 +20,9 @@ def getValWithVar(num: int, var: float, floorVal: int) -> int:
     var = num * (var / 100)
     low = round(max(10 + floorVal, num - var))
     high = round(min(2 ** 16, num + var))
+    if low > high:
+        return round(low, -1)
+
     return round(random.randint(low, high), -1)
 
 
