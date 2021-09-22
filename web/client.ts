@@ -110,8 +110,8 @@ provided seed an conf. For documentation on how the conf works or to file buf re
 or ask questions, see the  <a href="https://github.com/drsam94/mmbccr">github repository</a> for the project</br>
 Note that there are some features of the command line interface not available in the interface, </br>
 such as the ability to specify a list of chip names to randomize among. </br>
-Note that the server is currently run on an amazon aws ec2 instance with nearly no care </br>
-taken to long term stability; that pay improve over time, but the CLI will always work!`;
+Note that the server is currently run on an amazon aws ec2 instance with minimal care </br>
+taken to long term stability; that may improve over time, but the CLI will always work!`;
 
     document.body.appendChild(header);
     document.body.appendChild(introText);
