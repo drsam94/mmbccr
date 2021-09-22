@@ -43,6 +43,7 @@ To make a randomizer fun to play, it shouldn't just randomize arbitrarily. To th
 * NaviRange - live ChipRange, but to pick separate values for Navi chips
 * ChipGlobal - options for how to randomize chips
     * preserveOrdering: Ensure that chips in a series maintain their relationships of "strictly more powerly", e.g ensure that M-Cannon always has more ap,mb,and hp than Hi-Cannon.
+    * randomizeStartingChips: Randomize the starting chips in the player's folder, like chips in an encounter (defaults to true)
 * Encounters - options for how to randomize encounters
     * randomizeChips - randomize the chips in the Navi's deck; by default they will be randomized to other chips with the same MB values
     * randomizeNavi - If specified, the navi chip for the deck will also be randomized

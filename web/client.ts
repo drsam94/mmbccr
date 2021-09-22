@@ -7,7 +7,7 @@ class Requester {
         const req = new XMLHttpRequest();
         // Because the internet is stupid, this has to be POST in order for the body
         // to be sent
-        req.open("POST", "http://ec2-18-118-197-30.us-east-2.compute.amazonaws.com:8000/");
+        req.open("POST", "http://3.138.231.177:8000/");
         req.responseType = "blob";
         req.onload = function (evt: Event) {
             const url = window.URL.createObjectURL(req.response);
