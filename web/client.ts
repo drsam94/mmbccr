@@ -76,6 +76,7 @@ mb = 50
 
 [ChipGlobal]
 preserveOrdering = true
+randomizeStartingChips = true
 
 [Encounters]
 randomizeChips = true
