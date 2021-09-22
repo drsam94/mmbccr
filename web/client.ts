@@ -7,7 +7,7 @@ class Requester {
         const req = new XMLHttpRequest();
         // Because the internet is stupid, this has to be POST in order for the body
         // to be sent
-        req.open("POST", "http://ec2-3-143-141-13.us-east-2.compute.amazonaws.com:8000/");
+        req.open("POST", "http://3.138.231.177:8000/");
         req.responseType = "blob";
         const output = document.getElementById("output") as HTMLDivElement;
         req.onload = function (evt: Event) {
@@ -83,6 +83,7 @@ mb = 50
 
 [ChipGlobal]
 preserveOrdering = true
+randomizeStartingChips = true
 
 [Encounters]
 randomizeChips = true

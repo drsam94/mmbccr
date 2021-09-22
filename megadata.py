@@ -258,6 +258,35 @@ class EncounterT:
             f"bTh: {self.slotBotThresh} tTh: {self.slotTopThresh} op: {self.op} altNavi: {self.altNavi}"
         )
 
+class StartingChipsT:
+    """
+    The list of chips in your starting folder
+    """
+
+    myStruct = struct.Struct("<7B")
+
+    def __init__(self, data: bytearray, offset: int):
+        self.chips = [0] * 7
+        (*self.chips,) = StartingChipsT.myStruct.unpack_from(data, offset)
+
+    def serialize(self, data: bytearray, offset: int):
+        StartingChipsT.myStruct.pack_into(
+            data,
+            offset,
+            *self.chips,
+        )
+
+    def __str__(self):
+        if PrintOpts.verbose:
+            getChipName = lambda idx: str(
+                DataType.ChipName.parse(PrintOpts.refdata, idx - 1)
+            )
+        else:
+            getChipName = lambda idx: str(idx)
+        return (
+            f" chips: [{', '.join(getChipName(c) for c in self.chips)}] "
+        )   
+
 
 def invertMap(m):
     return {v: k for k, v in m.items()}
@@ -436,6 +465,7 @@ class DataType(Enum):
     OpName = 5
     ChipDesc = 6
     EffectDesc = 7
+    StartingChips = 8
 
     def getOffset(self) -> int:
         """
@@ -457,6 +487,8 @@ class DataType(Enum):
             return 0x22C35C
         elif self == DataType.EffectDesc:
             return 0x22BF78
+        elif self == DataType.StartingChips:
+            return 0x2273C1
         raise KeyError("bad value")
 
     def getSize(self) -> int:
@@ -466,13 +498,10 @@ class DataType(Enum):
             return 16
         elif self == DataType.Sprite:
             return 256
-        elif (
-            self == DataType.ChipName
-            or self == DataType.OpName
-            or self == DataType.EffectDesc
-            or self == DataType.ChipDesc
-        ):
+        elif self in [DataType.ChipName, DataType.OpName,DataType.EffectDesc,DataType.ChipDesc]:
             return 4  # Pointer
+        elif self == DataType.StartingChips:
+            return 7
         raise KeyError("bad value")
 
     def getArrayLength(self) -> int:
@@ -489,9 +518,11 @@ class DataType(Enum):
             return 174
         elif self == DataType.OpName:
             return 143
+        elif self == DataType.StartingChips:
+            return 1
         raise KeyError("bad value")
 
-    def parse(self, data: bytearray, index: int) -> Union[EncounterT, ChipT, StringT]:
+    def parse(self, data: bytearray, index: int) -> Union[EncounterT, ChipT, StringT, StartingChipsT]:
         offset = self.getOffset() + index * self.getSize()
         if self == DataType.Encounter:
             return EncounterT(data, offset)
@@ -503,9 +534,11 @@ class DataType(Enum):
             return StringT(data, offset, strCount=3, indirect=True)
         elif self == DataType.EffectDesc:
             return StringT(data, offset, format=0x600)
+        elif self == DataType.StartingChips:
+            return StartingChipsT(data, offset)
         raise KeyError("bad value")
 
     def rewrite(
-        self, data: bytearray, index: int, objT: Union[EncounterT, ChipT, StringT]
+        self, data: bytearray, index: int, objT: Union[EncounterT, ChipT, StringT, StartingChipsT]
     ):
         objT.serialize(data, self.getOffset() + index * self.getSize())

@@ -6,7 +6,7 @@ from megadata import *
 from distribution import getValWithVar, getPoissonRandom
 import configparser
 import random
-from typing import Optional
+from typing import Optional,Callable
 
 
 def randomizeChips(data: bytearray, config: configparser.ConfigParser):
@@ -96,10 +96,9 @@ def hasBadAtkBooster(chipMap, enc: EncounterT, j: int) -> bool:
     return False
 
 
+
 def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
     choices = config["Encounters"]
-    if not choices.getboolean("randomizeChips"):
-        return
     mbMap = Library.getMBMap(data)
     chipMap = Library.getChipMap(data)
     type = DataType.Encounter
@@ -112,13 +111,9 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
     if choices.getboolean("shuffle"):
         random.shuffle(shuffledEncs)
     writeEncs = []
-    for i in range(type.getArrayLength()):
-        i = shuffledEncs[i]
-        enc = type.parse(data, i)
-        assert isinstance(enc, EncounterT)
-        if randomOp:
-            enc.op = random.randint(0, 125)
-        for j, chip in enumerate(enc.chips):
+
+    def randomizeChipList(chipArr: List[int], rejectCB: Callable[[int],bool]):
+        for j, chip in enumerate(chipArr):
             if chip == 0:
                 if not fillChips:
                     continue
@@ -134,15 +129,31 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
                     myMap = mbMap[sourceMb]
                 sourceMb -= 10
             if len(myMap) == 0:
-                enc.chips[j] = 0
+                chipArr[j] = 0
             else:
                 while True:
-                    enc.chips[j] = 1 + random.choice(myMap)
-                    if not (doAtkFilter and hasBadAtkBooster(chipMap, enc, j)):
+                    chipArr[j] = 1 + random.choice(myMap)
+                    if not rejectCB(j):
                         break
+    if config["ChipGlobal"].getboolean("randomizeStartingChips", fallback=True):
+        startingChips = DataType.StartingChips.parse(data, 0)
+        assert isinstance(startingChips, StartingChipsT)
+        randomizeChipList(startingChips.chips, lambda x: False)
+        DataType.StartingChips.rewrite(data, 0, startingChips)
+
+    for i in range(type.getArrayLength()):
+        i = shuffledEncs[i]
+        enc = type.parse(data, i)
+        assert isinstance(enc, EncounterT)
+        if randomOp:
+            enc.op = random.randint(0, 125)
+        filterCB = lambda ind: doAtkFilter and hasBadAtkBooster(chipMap,enc,ind)
+        randomizeChipList(enc.chips, filterCB)
         if randomizeNavi:
             enc.navi = random.choice(list(Library.naviChipRange()))
-        writeEncs.append(enc)
+
+        if choices.getboolean("randomizeChips"):
+            writeEncs.append(enc)
     for i, enc in enumerate(writeEncs):
         type.rewrite(data, i, enc)
 
