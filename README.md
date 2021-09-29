@@ -8,6 +8,8 @@ sam@samdonow.com
  Requires a modern version of python (>= 3.6), and a ROM of Megaman Battlechip challenge
 ```
     python rando.py inFile outFile
+    # with a manually specified conffile
+    python rando.py inFile outFile [--conf rando.conf]
 ```
 # tools
 * rando.py: The randomizer itself
