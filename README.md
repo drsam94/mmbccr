@@ -7,9 +7,10 @@ sam@samdonow.com
 # How to use
  Requires a modern version of python (>= 3.6), and a ROM of Megaman Battlechip challenge
 ```
+    # Easiest invocation Usage
     python rando.py inFile outFile
-    # with a manually specified conffile
-    python rando.py inFile outFile [--conf rando.conf]
+    # With optional flags, or --help to see these options
+    python rando.py inFile outFile [--conf rando.conf] [--seed seed]
 ```
 # tools
 * rando.py: The randomizer itself
