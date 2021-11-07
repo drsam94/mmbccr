@@ -2,7 +2,7 @@ from typing import List, Union, Tuple, Iterable, Dict
 import struct
 from enum import Enum
 import itertools
-
+from bn2data import ChipT_BN2, VirusT_BN2, EncounterT_BN2
 
 class PrintOpts:
     verbose: bool = False
@@ -95,6 +95,7 @@ class ChipT:
             f"hit: {self.getHitChance()} dodge: {self.getDodgeChance()} art: {self.artIndex} "
             f"pallette: {self.palleteIndex} elem: {self.getElement()} flags: {hex(self.flags)}"
         )
+
 
 
 class Library:
@@ -288,10 +289,6 @@ class StartingChipsT:
         )   
 
 
-def invertMap(m):
-    return {v: k for k, v in m.items()}
-
-
 class MMChar:
     """
     Strings in MMBCC are stores using 16-bit wide characters, and using
@@ -316,7 +313,7 @@ class MMChar:
         0x99: "_",
         0x109: "-",
     }
-    inverseMap = invertMap(specialMap)
+    inverseMap = {v: k for k, v in specialMap.items()}
 
     @classmethod
     def isEncodedDigit(cls, char: int) -> bool:
@@ -344,8 +341,8 @@ class MMChar:
             return cls.A + char - ord("A")
         elif char >= ord("a") and char < ord("a") + 26:
             return cls.a + char - ord("a")
-        elif char in cls.inverseMap:
-            return cls.inverseMap[char]
+        elif charInput in cls.inverseMap:
+            return cls.inverseMap[charInput]
         else:
             return 0x5D
 
@@ -355,7 +352,7 @@ class MMChar:
 
     @classmethod
     def isTerminator(cls, char: int) -> bool:
-        return (char >> 8) == 0x80
+        return (char >> 8) == 0x80  
 
 
 def parsePtr(data: bytearray, offset: int) -> int:
@@ -451,6 +448,7 @@ class StringT:
         return "\n".join(parts)
 
 
+DataTypeVar =  Union[EncounterT, ChipT, StringT, StartingChipsT, ChipT_BN2, VirusT_BN2, EncounterT_BN2]
 class DataType(Enum):
     """
     DataType represents the various data types, which are generally stored in
@@ -466,6 +464,16 @@ class DataType(Enum):
     ChipDesc = 6
     EffectDesc = 7
     StartingChips = 8
+    Chip_BN2 = 9
+    ChipName_BN2 = 10
+    VirusName_BN2 = 11
+    ItemName_BN2 = 12
+    Virus_BN2 = 13
+    EncounterEVT_BN2 = 14
+    EncounterRegion_BN2 = 15
+
+    def isVarLengthString(self):
+        return self in [DataType.ChipName_BN2, DataType.VirusName_BN2, DataType.ItemName_BN2, DataType.EncounterEVT_BN2, DataType.EncounterRegion_BN2]
 
     def getOffset(self) -> int:
         """
@@ -489,6 +497,22 @@ class DataType(Enum):
             return 0x22BF78
         elif self == DataType.StartingChips:
             return 0x2273C1
+        elif self == DataType.Chip_BN2:
+            return 0x00E470
+        elif self == DataType.ChipName_BN2:
+            return 0x728779
+        elif self == DataType.VirusName_BN2:
+            return 0x73328C
+        elif self == DataType.ItemName_BN2:
+            return 0x7339B4
+        elif self == DataType.Virus_BN2:
+            return 0x01515C
+        elif self == DataType.EncounterEVT_BN2:
+            return 0x01571C
+        elif self == DataType.EncounterRegion_BN2:
+            # 0x019EB8 is around Den 1 ; the first region
+            # starts right after the event encounters though, with the different event pointer structure
+            return 0x0168C0
         raise KeyError("bad value")
 
     def getSize(self) -> int:
@@ -502,6 +526,12 @@ class DataType(Enum):
             return 4  # Pointer
         elif self == DataType.StartingChips:
             return 7
+        elif self == DataType.Chip_BN2:
+            return 32
+        elif self == DataType.Virus_BN2:
+            return 8
+        elif self == DataType.EncounterEVT_BN2 or self == DataType.EncounterRegion_BN2:
+            return 0 # dyanmic
         raise KeyError("bad value")
 
     def getArrayLength(self) -> int:
@@ -520,9 +550,30 @@ class DataType(Enum):
             return 143
         elif self == DataType.StartingChips:
             return 1
+        elif self == DataType.Chip_BN2:
+            return 266
+        elif self == DataType.ChipName_BN2:
+            # Special Values:
+            # Weird data at 255/256  (between BlkBomb and FtrSword)
+            # 265: GateSP
+            # 270: Scntuary (empty before) empty strs, Snctuary (270) 
+            # 272-303: PAs
+            # 304-315: Enemy 'chips' (e.g RemoGate) and empty strs
+            # 315: '????'
+            return 316
+        elif self == DataType.VirusName_BN2:
+            return 178
+        elif self == DataType.ItemName_BN2:
+            return 113
+        elif self == DataType.Virus_BN2:
+            return 178
+        elif self == DataType.EncounterEVT_BN2:
+            return 247
+        elif self == DataType.EncounterRegion_BN2:
+            return 849
         raise KeyError("bad value")
 
-    def parse(self, data: bytearray, index: int) -> Union[EncounterT, ChipT, StringT, StartingChipsT]:
+    def parse(self, data: bytearray, index: int) -> DataTypeVar:
         offset = self.getOffset() + index * self.getSize()
         if self == DataType.Encounter:
             return EncounterT(data, offset)
@@ -536,9 +587,13 @@ class DataType(Enum):
             return StringT(data, offset, format=0x600)
         elif self == DataType.StartingChips:
             return StartingChipsT(data, offset)
+        elif self == DataType.Chip_BN2:
+            return ChipT_BN2(data, offset)
+        elif self == DataType.Virus_BN2:
+            return VirusT_BN2(data, offset)
         raise KeyError("bad value")
 
     def rewrite(
-        self, data: bytearray, index: int, objT: Union[EncounterT, ChipT, StringT, StartingChipsT]
+        self, data: bytearray, index: int, objT: DataTypeVar
     ):
         objT.serialize(data, self.getOffset() + index * self.getSize())

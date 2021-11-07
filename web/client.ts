@@ -100,7 +100,7 @@ randomizeNames = false`.replace(/\n/i, "\r\n");
 
 function createIntroDOM() {
     const header = document.createElement("h1");
-    header.innerText = "Meagman Battlechip Challenge Randomizer";
+    header.innerText = "Mega Man Battlechip Challenge Randomizer";
 
     const introText = document.createElement("p");
     introText.innerHTML = `
@@ -125,7 +125,7 @@ function main() {
     fileInput.addEventListener<"change">("change", (ev) => { req.readInputFile(ev); }, false);
     const label = document.createElement("label");
     label.htmlFor = fileInput.id;
-    label.innerText = "Upload Megaman Battle Chip Challenge English ROM";
+    label.innerText = "Upload Mega Man Battle Chip Challenge English ROM";
 
     const textInput = document.createElement("textarea");
     textInput.rows = 25;

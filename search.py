@@ -42,7 +42,7 @@ def search(pattern: List[int], data: bytearray, args: Any) -> List[int]:
                 varMap[data[ind]] = pattern[patInd]
         if isMatch:
             if patInd == patLen - (0 if args.delta else 1):
-                ret.append(ind - patInd)
+                ret.append(ind - patInd * args.stride)
                 patInd = 0
             else:
                 patInd += 1
@@ -54,6 +54,15 @@ def search(pattern: List[int], data: bytearray, args: Any) -> List[int]:
         ind += 1
     return ret
 
+def printRes(res: List[int], args: Any):
+    prev = 0
+    for loc in res:
+        delta = loc - prev
+        if args.maxDelta == 0 or delta < args.maxDelta:
+            print(hex(loc))
+            if args.printDelta:
+                print(loc - prev)
+        prev = loc 
 
 def main():
     parser = argparse.ArgumentParser(
@@ -65,9 +74,10 @@ def main():
     parser.add_argument("--middleStart", action="store_true")
     parser.add_argument("--variable", action="store_true")
     parser.add_argument("--hex", action="store_true")
+    parser.add_argument("--printDelta", action="store_true")
+    parser.add_argument("--maxDelta", metavar="maxDelta", type=int, default=0)
     parser.add_argument("file", metavar="file", type=str)
     parser.add_argument("pattern", metavar="code", type=str, nargs="+")
-
     args = parser.parse_args()
 
     input = open(args.file, "rb")
@@ -80,14 +90,13 @@ def main():
         args.stride = 1
         while args.stride < 64:
             print(args.stride)
-            res = search(args.pattern, byteData, args.stride, args.delta)
+            res = search(args.pattern, byteData, args)
             if len(res) > 0:
-                break
+                printRes(res, args)
             args.stride += 1
     else:
         res = search(args.pattern, byteData, args)
-    for loc in res:
-        print(hex(loc))
+    printRes(res, args)
 
 
 if __name__ == "__main__":
