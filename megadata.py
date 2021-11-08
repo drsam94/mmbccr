@@ -1,8 +1,9 @@
-from typing import List, Union, Tuple, Iterable, Dict
+from typing import List, Union, Tuple, Iterable, Dict, Any
 import struct
 from enum import Enum
 import itertools
-from bn2data import ChipT_BN2, VirusT_BN2, EncounterT_BN2
+from bn2data import ChipT_BN2, VirusT_BN2, EncounterT_BN2, ShopInventory
+
 
 class PrintOpts:
     verbose: bool = False
@@ -95,7 +96,6 @@ class ChipT:
             f"hit: {self.getHitChance()} dodge: {self.getDodgeChance()} art: {self.artIndex} "
             f"pallette: {self.palleteIndex} elem: {self.getElement()} flags: {hex(self.flags)}"
         )
-
 
 
 class Library:
@@ -259,6 +259,7 @@ class EncounterT:
             f"bTh: {self.slotBotThresh} tTh: {self.slotTopThresh} op: {self.op} altNavi: {self.altNavi}"
         )
 
+
 class StartingChipsT:
     """
     The list of chips in your starting folder
@@ -284,9 +285,7 @@ class StartingChipsT:
             )
         else:
             getChipName = lambda idx: str(idx)
-        return (
-            f" chips: [{', '.join(getChipName(c) for c in self.chips)}] "
-        )   
+        return f" chips: [{', '.join(getChipName(c) for c in self.chips)}] "
 
 
 class MMChar:
@@ -352,7 +351,7 @@ class MMChar:
 
     @classmethod
     def isTerminator(cls, char: int) -> bool:
-        return (char >> 8) == 0x80  
+        return (char >> 8) == 0x80
 
 
 def parsePtr(data: bytearray, offset: int) -> int:
@@ -448,7 +447,18 @@ class StringT:
         return "\n".join(parts)
 
 
-DataTypeVar =  Union[EncounterT, ChipT, StringT, StartingChipsT, ChipT_BN2, VirusT_BN2, EncounterT_BN2]
+DataTypeVar = Union[
+    EncounterT,
+    ChipT,
+    StringT,
+    StartingChipsT,
+    ChipT_BN2,
+    VirusT_BN2,
+    EncounterT_BN2,
+    ShopInventory,
+]
+
+
 class DataType(Enum):
     """
     DataType represents the various data types, which are generally stored in
@@ -471,9 +481,14 @@ class DataType(Enum):
     Virus_BN2 = 13
     EncounterEVT_BN2 = 14
     EncounterRegion_BN2 = 15
+    ShopInventory_BN2 = 16
 
     def isVarLengthString(self):
-        return self in [DataType.ChipName_BN2, DataType.VirusName_BN2, DataType.ItemName_BN2, DataType.EncounterEVT_BN2, DataType.EncounterRegion_BN2]
+        return self in [
+            DataType.ChipName_BN2,
+            DataType.VirusName_BN2,
+            DataType.ItemName_BN2,
+        ]
 
     def getOffset(self) -> int:
         """
@@ -510,19 +525,26 @@ class DataType(Enum):
         elif self == DataType.EncounterEVT_BN2:
             return 0x01571C
         elif self == DataType.EncounterRegion_BN2:
-            # 0x019EB8 is around Den 1 ; the first region
+            # 0x0a1000 is around Den 1 ; the first region
             # starts right after the event encounters though, with the different event pointer structure
             return 0x0168C0
+        elif self == DataType.ShopInventory_BN2:
+            return 0x030184
         raise KeyError("bad value")
 
-    def getSize(self) -> int:
+    def getSize(self, obj: Any = None) -> int:
         if self == DataType.Encounter:
             return 20
         elif self == DataType.Chip:
             return 16
         elif self == DataType.Sprite:
             return 256
-        elif self in [DataType.ChipName, DataType.OpName,DataType.EffectDesc,DataType.ChipDesc]:
+        elif self in [
+            DataType.ChipName,
+            DataType.OpName,
+            DataType.EffectDesc,
+            DataType.ChipDesc,
+        ]:
             return 4  # Pointer
         elif self == DataType.StartingChips:
             return 7
@@ -530,8 +552,12 @@ class DataType(Enum):
             return 32
         elif self == DataType.Virus_BN2:
             return 8
-        elif self == DataType.EncounterEVT_BN2 or self == DataType.EncounterRegion_BN2:
-            return 0 # dyanmic
+        elif self in [
+            DataType.EncounterEVT_BN2,
+            DataType.EncounterRegion_BN2,
+            DataType.ShopInventory_BN2,
+        ]:
+            return 0 if obj is None else obj.getSize()
         raise KeyError("bad value")
 
     def getArrayLength(self) -> int:
@@ -556,7 +582,7 @@ class DataType(Enum):
             # Special Values:
             # Weird data at 255/256  (between BlkBomb and FtrSword)
             # 265: GateSP
-            # 270: Scntuary (empty before) empty strs, Snctuary (270) 
+            # 270: Scntuary (empty before) empty strs, Snctuary (270)
             # 272-303: PAs
             # 304-315: Enemy 'chips' (e.g RemoGate) and empty strs
             # 315: '????'
@@ -568,13 +594,14 @@ class DataType(Enum):
         elif self == DataType.Virus_BN2:
             return 178
         elif self == DataType.EncounterEVT_BN2:
-            return 247
+            return 243
         elif self == DataType.EncounterRegion_BN2:
             return 849
+        elif self == DataType.ShopInventory_BN2:
+            return 18
         raise KeyError("bad value")
 
-    def parse(self, data: bytearray, index: int) -> DataTypeVar:
-        offset = self.getOffset() + index * self.getSize()
+    def parseAtOffset(self, data: bytearray, offset: int) -> DataTypeVar:
         if self == DataType.Encounter:
             return EncounterT(data, offset)
         elif self == DataType.Chip:
@@ -591,9 +618,18 @@ class DataType(Enum):
             return ChipT_BN2(data, offset)
         elif self == DataType.Virus_BN2:
             return VirusT_BN2(data, offset)
+        elif self in [DataType.EncounterEVT_BN2, DataType.EncounterRegion_BN2]:
+            return EncounterT_BN2(data, offset)
+        elif self == DataType.ShopInventory_BN2:
+            return ShopInventory(data, offset)
         raise KeyError("bad value")
 
-    def rewrite(
-        self, data: bytearray, index: int, objT: DataTypeVar
-    ):
+    def parse(self, data: bytearray, index: int) -> DataTypeVar:
+        objSize = self.getSize()
+        if objSize == 0:
+            raise KeyError(f"Parse not supported on type {self}")
+        offset = self.getOffset() + index * objSize
+        return self.parseAtOffset(data, offset)
+
+    def rewrite(self, data: bytearray, index: int, objT: DataTypeVar):
         objT.serialize(data, self.getOffset() + index * self.getSize())

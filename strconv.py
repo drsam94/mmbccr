@@ -8,7 +8,7 @@ from textwrap import wrap
 
 def main():
     parser = argparse.ArgumentParser(
-        "strconv", description="convert a string to/from mm format"
+        "strconv", description="convert a string to/from mm format for bbc"
     )
     parser.add_argument("action", metavar="action", type=str)
     parser.add_argument("text", metavar="text", type=str)
