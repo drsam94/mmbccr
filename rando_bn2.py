@@ -2,7 +2,8 @@ from typing import List, cast
 import configparser
 import random
 from megadata import DataType
-from bn2data import EncounterDesc, EncounterT_BN2, EncounterEntity, VirusCategory
+from bn2data import ShopInventory, EncounterT_BN2, VirusCategory
+from distribution import getValWithVar, getPoissonRandom
 
 
 def randomizeEncounter(encounter: EncounterT_BN2, config: configparser.SectionProxy):
@@ -65,3 +66,63 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
                 continue
             randomizeEncounter(encounter, choices)
             encounter.serialize(data, writeOffset)
+
+
+def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy):
+    if shop.isSubChipShop():
+        return
+
+    minShopElements = min(8, config.getint("MinElements", 8))
+    cheapPowerUps = config.getboolean("CheapPowerUps")
+    forceStoryChips = config.getboolean("ForceStoryChips")
+    isFirstShop = False
+    for i, elem in enumerate(shop.elems):
+        if elem.type == 0x01:
+            if cheapPowerUps:
+                elem.cost = 100
+            continue
+        fixedInd = False
+        if elem.ind == 0x04:
+            isFirstShop = True
+        elif isFirstShop and forceStoryChips:
+            if i == 6:
+                elem.qty = 3
+                elem.type = 0x02
+                elem.ind = 66  # ZapRing2
+                elem.code = 0x01
+                elem.cost = 100
+                fixedInd = True
+            elif i == 7:
+                elem.qty = 3
+                elem.type = 0x02
+                elem.ind = 19  # BigBomb
+                elem.code = 0x1A
+                elem.cost = 100
+                fixedInd = True
+        elif elem.ind == 0 and i == minShopElements:
+            return
+        elif elem.ind == 0:
+            elem.type = 0x02
+            elem.qty = 1 + getPoissonRandom(0.5)
+            elem.cost = 100
+        # Can put any code but will be converted
+        elem.code = random.randint(0, 27)
+        elem.cost = random.randint(elem.cost // 2, 2 * elem.cost)
+        while not fixedInd:
+            elem.ind = random.randint(1, 266)
+            fixedInd = elem.ind != 256  # Broken index
+
+
+def randomizeShops(data: bytearray, config: configparser.ConfigParser):
+    choices = config["Shops"]
+
+    if not choices.getboolean("RandomizeChipShops"):
+        return
+    type = DataType.ShopInventory_BN2
+    offset = type.getOffset()
+    for i in range(type.getArrayLength()):
+        shop = cast(ShopInventory, type.parseAtOffset(data, offset))
+        writeOffset = offset
+        offset += type.getSize()
+        randomizeShop(shop, choices)
+        shop.serialize(data, writeOffset)

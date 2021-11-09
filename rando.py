@@ -4,21 +4,23 @@ import sys
 import argparse
 import configparser
 import random
-from typing import Optional,Callable
+from typing import Optional, Callable
 from enum import Enum
 
 
 class Game(Enum):
     BCC = 1
     BN2 = 2
-    
+
+
 def identifyGame(byteData: bytearray) -> Game:
     header = byteData[0xA0:0xB0]
-    if header   == b"BATTLECHIPGPA89E":
+    if header == b"BATTLECHIPGPA89E":
         return Game.BCC
     elif header == b"MEGAMAN_EXE2AE2E":
         return Game.BN2
     raise Exception(f"Detected no valid game, found header {header}")
+
 
 def randomize(
     byteData: bytearray, config: configparser.ConfigParser, seed: Optional[int]
@@ -31,12 +33,15 @@ def randomize(
     print(f"Randomizing {game}")
     if game == Game.BCC:
         import rando_bcc
+
         rando_bcc.randomizeChips(byteData, config)
         rando_bcc.randomizeEncounters(byteData, config)
         rando_bcc.randomizeNames(byteData, config)
     elif game == Game.BN2:
         import rando_bn2
+
         rando_bn2.randomizeEncounters(byteData, config)
+        rando_bn2.randomizeShops(byteData, config)
     return seed
 
 
@@ -44,9 +49,7 @@ def main():
     parser = argparse.ArgumentParser(
         "rando", description="A randomizer for Megaman Battlechip Challenge"
     )
-    parser.add_argument(
-        "--conf", "-f", metavar="conffile", type=str, default=""
-    )
+    parser.add_argument("--conf", "-f", metavar="conffile", type=str, default="")
     parser.add_argument("--seed", "-s", metavar="seed", type=int, default=None)
     parser.add_argument("infile", metavar="infile", type=str)
     parser.add_argument("outfile", metavar="outfile", type=str)
@@ -57,10 +60,9 @@ def main():
     game = identifyGame(byteData)
     if not args.conf:
         args.conf = "rando_bcc.conf" if game == Game.BCC else "rando_bn2.conf"
-    
+
     config = configparser.ConfigParser()
     config.read(args.conf)
-
 
     randomize(byteData, config, args.seed)
     outFile = open(args.outfile, "wb+")

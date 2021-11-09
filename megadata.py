@@ -552,10 +552,11 @@ class DataType(Enum):
             return 32
         elif self == DataType.Virus_BN2:
             return 8
+        elif self == DataType.ShopInventory_BN2:
+            return 96
         elif self in [
             DataType.EncounterEVT_BN2,
             DataType.EncounterRegion_BN2,
-            DataType.ShopInventory_BN2,
         ]:
             return 0 if obj is None else obj.getSize()
         raise KeyError("bad value")
@@ -598,7 +599,7 @@ class DataType(Enum):
         elif self == DataType.EncounterRegion_BN2:
             return 849
         elif self == DataType.ShopInventory_BN2:
-            return 18
+            return 25
         raise KeyError("bad value")
 
     def parseAtOffset(self, data: bytearray, offset: int) -> DataTypeVar:

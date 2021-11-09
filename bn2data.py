@@ -119,7 +119,7 @@ class ChipT_BN2:
 
     def __str__(self):
         return (
-            f"unk1: {self.unk1}, mb: {self.mb}, flags: {self.flags}, ap: {self.ap}, "
+            f"unk1: {self.unk1}, unk2: {self.unk2}, mb: {self.mb}, flags: {self.flags}, ap: {self.ap}, "
             f"idx: {self.idx} "
             f"effect: {hex(self.effect)} descBytes: {hex(self.descBytes)} "
             f"img: {hex(self.imgPtr)} col: {hex(self.colorPtr)} thumb: {hex(self.thumbnailPtr)}"
@@ -458,8 +458,14 @@ class ShopElem(object):
             self.zero,
         )
 
+    def isChip(self) -> bool:
+        return self.type == 0x02
+
+    def isPowerUp(self) -> bool:
+        return self.getName() in ["HPMemory", "PowerUp"]
+
     def getName(self) -> str:
-        if self.type == 0x02:
+        if self.isChip():
             return NameMaps.chipNameMap.get(self.ind - 1, self.ind)
         else:
             return NameMaps.itemNameMap.get(self.ind, f"SubChip{hex(self.ind)}")
@@ -474,26 +480,18 @@ class ShopInventory(object):
     def __init__(self, data: bytearray, offset: int):
         self.elems: List[ShopElem] = []
         self.emptyCount = 0
-        endSeen = False
-        while True:
+        for _ in range(8):
             elem = ShopElem(data, offset)
-            if elem.ind == 0:
-                endSeen = True
-            elif endSeen:
-                break
             offset += 12
-            if elem.ind != 0:
-                self.elems.append(elem)
-            else:
-                self.emptyCount += 1
+            self.elems.append(elem)
 
     def serialize(self, data: bytearray, offset: int):
         for elem in self.elems:
             elem.serialize(data, offset)
             offset += 12
 
-    def getSize(self) -> int:
-        return 12 * (self.emptyCount + len(self.elems))
+    def isSubChipShop(self):
+        return all(not elem.isChip() for elem in self.elems)
 
     def __str__(self) -> str:
         return "\n".join(map(str, self.elems))
