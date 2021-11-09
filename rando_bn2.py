@@ -111,6 +111,8 @@ def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy):
         while not fixedInd:
             elem.ind = random.randint(1, 266)
             fixedInd = elem.ind != 256  # Broken index
+            # Fighter sword but crash
+            # TODO: check other high values?
 
 
 def randomizeShops(data: bytearray, config: configparser.ConfigParser):
