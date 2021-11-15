@@ -3,6 +3,7 @@
 import sys
 import argparse
 from typing import List, Any, Dict
+from megadata import DataType
 
 
 def search(pattern: List[int], data: bytearray, args: Any) -> List[int]:
@@ -54,15 +55,39 @@ def search(pattern: List[int], data: bytearray, args: Any) -> List[int]:
         ind += 1
     return ret
 
+
+def isBN2Mapped(loc: int):
+    """
+    Returns true if the data is already known in BN2 mapping
+    TODO: incorporate variable size regions
+    """
+    for type in [
+        DataType.Chip_BN2,
+        DataType.Virus_BN2,
+        DataType.EncounterEVT_BN2,
+        DataType.EncounterRegion_BN2,
+        DataType.ShopInventory_BN2,
+        DataType.ChipFolder_BN2,
+    ]:
+        base = type.getOffset()
+        end = base + type.getArrayLength() * type.getSize()
+        if loc >= base and loc <= end:
+            return True
+    return False
+
+
 def printRes(res: List[int], args: Any):
     prev = 0
     for loc in res:
         delta = loc - prev
         if args.maxDelta == 0 or delta < args.maxDelta:
+            if args.skipMapped and isBN2Mapped(loc):
+                continue
             print(hex(loc))
             if args.printDelta:
                 print(loc - prev)
-        prev = loc 
+        prev = loc
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -76,6 +101,7 @@ def main():
     parser.add_argument("--hex", action="store_true")
     parser.add_argument("--printDelta", action="store_true")
     parser.add_argument("--maxDelta", metavar="maxDelta", type=int, default=0)
+    parser.add_argument("--skipMapped", action="store_true")
     parser.add_argument("file", metavar="file", type=str)
     parser.add_argument("pattern", metavar="code", type=str, nargs="+")
     args = parser.parse_args()

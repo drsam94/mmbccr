@@ -1,12 +1,41 @@
-from typing import List, cast
+from typing import List, cast, Callable, Any
 import configparser
 import random
-from megadata import DataType
-from bn2data import ShopInventory, EncounterT_BN2, VirusCategory
+from megadata import DataType, DataTypeVar
+from bn2data import (
+    ShopInventory,
+    EncounterT_BN2,
+    VirusCategory,
+    NameMaps,
+    ChipT_BN2,
+    ChipFolder,
+)
 from distribution import getValWithVar, getPoissonRandom
 
 
-def randomizeEncounter(encounter: EncounterT_BN2, config: configparser.SectionProxy):
+def getRandomCode(ind: int, config: configparser.SectionProxy) -> int:
+    starChance = config.getint("StarPercent", 20)
+    rand = random.randint(0, 99)
+    if rand < starChance:
+        return 0x1A
+    choices = NameMaps.getValidCodes(ind)
+    if len(choices) == 1:
+        return 0x1A
+    else:
+        return random.choice(choices[:-1])
+
+
+def getValidCode(ind: int, code: int) -> int:
+    validCodes = NameMaps.getValidCodes(ind)
+    if code in validCodes:
+        return code
+    else:
+        return random.choice(validCodes[:-1])
+
+
+def randomizeEncounter(
+    encounter: EncounterT_BN2, config: configparser.SectionProxy, type: DataType
+):
     if encounter.isNaviBattle() and not config.getboolean("RandomizeNavis"):
         return
 
@@ -17,6 +46,10 @@ def randomizeEncounter(encounter: EncounterT_BN2, config: configparser.SectionPr
             # Megaman or obstacle, do not change
             continue
         dontTouchCategories = [VirusCategory.Protecto, VirusCategory.Dragon]
+        if type == DataType.EncounterEVT_BN2:
+            # Moles can make many events e.g tutorial virtually impossible
+            # as escaping counts as a loss
+            dontTouchCategories.append(VirusCategory.Mole)
         if any(cat.isInCategory(entity.idx) for cat in dontTouchCategories):
             continue
         prohibitCategories = dontTouchCategories + [VirusCategory.Navi]
@@ -64,27 +97,29 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
                 continue
             if not encounter.isEntities():
                 continue
-            randomizeEncounter(encounter, choices)
+            randomizeEncounter(encounter, choices, type)
             encounter.serialize(data, writeOffset)
 
 
-def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy):
+def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy, ind: int):
     if shop.isSubChipShop():
         return
 
+    if not config.getboolean("RandomizeChipShops"):
+        return
     minShopElements = min(8, config.getint("MinElements", 8))
     cheapPowerUps = config.getboolean("CheapPowerUps")
     forceStoryChips = config.getboolean("ForceStoryChips")
-    isFirstShop = False
+    randomizeCodes = config.getboolean("RandomizeCodes")
     for i, elem in enumerate(shop.elems):
         if elem.type == 0x01:
             if cheapPowerUps:
                 elem.cost = 100
             continue
+        if elem.qty == 0xFF and not randomizeCodes:
+            continue
         fixedInd = False
-        if elem.ind == 0x04:
-            isFirstShop = True
-        elif isFirstShop and forceStoryChips:
+        if ind == 0 and forceStoryChips:
             if i == 6:
                 elem.qty = 3
                 elem.type = 0x02
@@ -105,26 +140,84 @@ def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy):
             elem.type = 0x02
             elem.qty = 1 + getPoissonRandom(0.5)
             elem.cost = 100
-        # Can put any code but will be converted
-        elem.code = random.randint(0, 27)
-        elem.cost = random.randint(elem.cost // 2, 2 * elem.cost)
+
+        wasFixedInd = fixedInd
         while not fixedInd:
-            elem.ind = random.randint(1, 266)
+            elem.ind = random.randint(1, 264)
             fixedInd = elem.ind != 256  # Broken index
             # Fighter sword but crash
             # TODO: check other high values?
 
+        elem.cost = min(2 ** 16 - 1, random.randint(elem.cost // 2, 2 * elem.cost))
 
-def randomizeShops(data: bytearray, config: configparser.ConfigParser):
-    choices = config["Shops"]
+        if randomizeCodes and not wasFixedInd:
+            elem.code = getRandomCode(elem.ind, config)
+        else:
+            elem.code = getValidCode(elem.ind, elem.code)
 
-    if not choices.getboolean("RandomizeChipShops"):
+
+def randomizeChipInfo(chip: ChipT_BN2, config: configparser.SectionProxy, ind: int):
+    randomizeCodes = config.getboolean("RandomizeCodes")
+
+    if randomizeCodes:
+        assignedCodes = []
+        for i in range(0, 4):
+            if ind == 63 and i == 0:
+                # ZapRing2 B
+                codeToUse = 0x01
+            else:
+                while True:
+                    codeToUse = random.randint(0, 0x19)
+                    if codeToUse not in assignedCodes:
+                        break
+            chip.codes[i] = codeToUse
+            assignedCodes.append(codeToUse)
+
+
+def randomizeFolder(folder: ChipFolder, config: configparser.SectionProxy, ind: int):
+    randomizeTutorial = config.getboolean("RandomizeTutorial", False)
+    if not randomizeTutorial and ind >= 3:
         return
-    type = DataType.ShopInventory_BN2
+
+    randomizeFolder = config.getboolean("RandomizeFolder")
+    for chip in folder.elems:
+        if randomizeFolder:
+            # Just use standard chips for now
+            chip.chip = random.randint(0, 193)
+
+        if randomizeFolder:
+            chip.code = getRandomCode(chip.chip, config)
+        else:
+            # Adjust the code even if we aren't otherwise randomizing
+            # the folders as otherwise folder/pack gets messed up.
+            # Note the tutorial folders still work fine even if the codes
+            # aren't among the actual possibilities
+            chip.code = getValidCode(chip.chip, chip.code)
+
+
+def _randomizeCommon(
+    data: bytearray,
+    config: configparser.SectionProxy,
+    type: DataType,
+    fcn: Callable[[Any, configparser.SectionProxy, int], None],
+):
+
     offset = type.getOffset()
     for i in range(type.getArrayLength()):
-        shop = cast(ShopInventory, type.parseAtOffset(data, offset))
+        item = type.parseAtOffset(data, offset)
         writeOffset = offset
         offset += type.getSize()
-        randomizeShop(shop, choices)
-        shop.serialize(data, writeOffset)
+        fcn(item, config, i)
+        item.serialize(data, writeOffset)
+
+
+def randomizeShops(data: bytearray, config: configparser.ConfigParser):
+    _randomizeCommon(data, config["Shops"], DataType.ShopInventory_BN2, randomizeShop)
+
+
+def randomizeChips(data: bytearray, config: configparser.ConfigParser):
+    _randomizeCommon(data, config["Chips"], DataType.Chip_BN2, randomizeChipInfo)
+
+
+def randomizeFolders(data: bytearray, config: configparser.ConfigParser):
+    _randomizeCommon(data, config["Folders"], DataType.ChipFolder_BN2, randomizeFolder)

@@ -1,8 +1,17 @@
-from typing import List, Union, Tuple, Iterable, Dict, Any
+from typing import List, Union, Tuple, Iterable, Dict, Any, cast
 import struct
 from enum import Enum
 import itertools
-from bn2data import ChipT_BN2, VirusT_BN2, EncounterT_BN2, ShopInventory
+from bn2data import (
+    ChipT_BN2,
+    VirusT_BN2,
+    EncounterT_BN2,
+    ShopInventory,
+    NameMaps,
+    BN2Char,
+    ChipFolder,
+    DropTable,
+)
 
 
 class PrintOpts:
@@ -456,6 +465,8 @@ DataTypeVar = Union[
     VirusT_BN2,
     EncounterT_BN2,
     ShopInventory,
+    ChipFolder,
+    DropTable,
 ]
 
 
@@ -466,6 +477,7 @@ class DataType(Enum):
     as knowledge as to how large each object is and where the home array lives
     """
 
+    # mmbcc
     Encounter = 1
     Chip = 2
     Sprite = 3
@@ -474,6 +486,7 @@ class DataType(Enum):
     ChipDesc = 6
     EffectDesc = 7
     StartingChips = 8
+    # bn2
     Chip_BN2 = 9
     ChipName_BN2 = 10
     VirusName_BN2 = 11
@@ -482,6 +495,8 @@ class DataType(Enum):
     EncounterEVT_BN2 = 14
     EncounterRegion_BN2 = 15
     ShopInventory_BN2 = 16
+    ChipFolder_BN2 = 17
+    DropTable_BN2 = 18
 
     def isVarLengthString(self):
         return self in [
@@ -530,6 +545,10 @@ class DataType(Enum):
             return 0x0168C0
         elif self == DataType.ShopInventory_BN2:
             return 0x030184
+        elif self == DataType.ChipFolder_BN2:
+            return 0x009974
+        elif self == DataType.DropTable_BN2:
+            return 0x012624
         raise KeyError("bad value")
 
     def getSize(self, obj: Any = None) -> int:
@@ -559,6 +578,10 @@ class DataType(Enum):
             DataType.EncounterRegion_BN2,
         ]:
             return 0 if obj is None else obj.getSize()
+        elif self == DataType.ChipFolder_BN2:
+            return 120
+        elif self == DataType.DropTable_BN2:
+            return 60
         raise KeyError("bad value")
 
     def getArrayLength(self) -> int:
@@ -578,7 +601,7 @@ class DataType(Enum):
         elif self == DataType.StartingChips:
             return 1
         elif self == DataType.Chip_BN2:
-            return 266
+            return 265
         elif self == DataType.ChipName_BN2:
             # Special Values:
             # Weird data at 255/256  (between BlkBomb and FtrSword)
@@ -600,6 +623,10 @@ class DataType(Enum):
             return 849
         elif self == DataType.ShopInventory_BN2:
             return 25
+        elif self == DataType.ChipFolder_BN2:
+            return 6
+        elif self == DataType.DropTable_BN2:
+            return 184
         raise KeyError("bad value")
 
     def parseAtOffset(self, data: bytearray, offset: int) -> DataTypeVar:
@@ -623,6 +650,10 @@ class DataType(Enum):
             return EncounterT_BN2(data, offset)
         elif self == DataType.ShopInventory_BN2:
             return ShopInventory(data, offset)
+        elif self == DataType.ChipFolder_BN2:
+            return ChipFolder(data, offset)
+        elif self == DataType.DropTable_BN2:
+            return DropTable(data, offset)
         raise KeyError("bad value")
 
     def parse(self, data: bytearray, index: int) -> DataTypeVar:
@@ -634,3 +665,29 @@ class DataType(Enum):
 
     def rewrite(self, data: bytearray, index: int, objT: DataTypeVar):
         objT.serialize(data, self.getOffset() + index * self.getSize())
+
+
+def populateBN2Meta(byteData: bytearray):
+    offset = DataType.VirusName_BN2.getOffset()
+    vn: Dict[int, str] = {}
+    for i in range(DataType.VirusName_BN2.getArrayLength()):
+        out, offset = BN2Char.toString(byteData, offset)
+        vn[i] = out
+    vn[255] = "<255>"
+    vn[0] = "<0>"
+    NameMaps.setVirusNameMap(vn)
+
+    offset = DataType.ChipName_BN2.getOffset()
+    cn: Dict[int, str] = {}
+    for i in range(DataType.ChipName_BN2.getArrayLength()):
+        out, offset = BN2Char.toString(byteData, offset)
+        cn[i] = out
+    NameMaps.setChipNameMap(cn)
+
+    offset = DataType.Chip_BN2.getOffset()
+
+    cim: Dict[int, ChipT_BN2] = {}
+    for i in range(DataType.Chip_BN2.getArrayLength()):
+        chip = cast(ChipT_BN2, DataType.Chip_BN2.parse(byteData, i))
+        cim[i] = chip
+    NameMaps.setChipInfoMap(cim)

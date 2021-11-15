@@ -39,9 +39,13 @@ def randomize(
         rando_bcc.randomizeNames(byteData, config)
     elif game == Game.BN2:
         import rando_bn2
+        import megadata
 
+        megadata.populateBN2Meta(byteData)
+        rando_bn2.randomizeChips(byteData, config)
         rando_bn2.randomizeEncounters(byteData, config)
         rando_bn2.randomizeShops(byteData, config)
+        rando_bn2.randomizeFolders(byteData, config)
     return seed
 
 

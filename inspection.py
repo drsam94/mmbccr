@@ -29,22 +29,10 @@ def main():
         DataType.EncounterEVT_BN2,
         DataType.EncounterRegion_BN2,
         DataType.ShopInventory_BN2,
+        DataType.ChipFolder_BN2,
+        DataType.DropTable_BN2,
     ]:
-        offset = DataType.VirusName_BN2.getOffset()
-        vn: Dict[int, str] = {}
-        for i in range(DataType.VirusName_BN2.getArrayLength()):
-            out, offset = BN2Char.toString(byteData, offset)
-            vn[i] = out
-        vn[255] = "<255>"
-        vn[0] = "<0>"
-        NameMaps.setVirusNameMap(vn)
-
-        offset = DataType.ChipName_BN2.getOffset()
-        cn: Dict[int, str] = {}
-        for i in range(DataType.ChipName_BN2.getArrayLength()):
-            out, offset = BN2Char.toString(byteData, offset)
-            cn[i] = out
-        NameMaps.setChipNameMap(cn)
+        populateBN2Meta(byteData)
 
     offset = type.getOffset()
     for i in range(type.getArrayLength()):

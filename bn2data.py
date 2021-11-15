@@ -75,14 +75,29 @@ class BN2Char:
         return char == 0xE7
 
 
+def codeStr(code: int) -> str:
+    if code == 0xFF:
+        return ""
+    elif code == 0x1A:
+        return "*"
+    else:
+        return chr(ord("A") + code)
+
+
 class ChipT_BN2:
-    myStruct = struct.Struct("<2I4B2H4B3I")
+    myStruct = struct.Struct("<6BH4B2H4B3I")
 
     def __init__(self, data: bytearray, offset: int):
+        self.codes = [0] * 6
         self.unk1 = [0] * 2
         self.unk2 = [0] * 4
         (
-            self.descBytes,
+            self.codes[0],
+            self.codes[1],
+            self.codes[2],
+            self.codes[3],
+            self.codes[4],
+            self.codes[5],
             self.effect,
             self.unk1[0],
             self.unk1[1],
@@ -103,7 +118,12 @@ class ChipT_BN2:
         ChipT_BN2.myStruct.pack_into(
             data,
             offset,
-            self.descBytes,
+            self.codes[0],
+            self.codes[1],
+            self.codes[2],
+            self.codes[3],
+            self.codes[4],
+            self.codes[5],
             self.effect,
             self.unk1[0],
             self.unk1[1],
@@ -121,7 +141,7 @@ class ChipT_BN2:
         return (
             f"unk1: {self.unk1}, unk2: {self.unk2}, mb: {self.mb}, flags: {self.flags}, ap: {self.ap}, "
             f"idx: {self.idx} "
-            f"effect: {hex(self.effect)} descBytes: {hex(self.descBytes)} "
+            f"effect: {hex(self.effect)} codes: {[codeStr(cd) for cd in self.codes]} "
             f"img: {hex(self.imgPtr)} col: {hex(self.colorPtr)} thumb: {hex(self.thumbnailPtr)}"
         )
 
@@ -290,6 +310,8 @@ class VirusCategory(Enum):
             encounters
             """
             return list(range(123, 178))
+        elif self == VirusCategory.Mole:
+            return [41, 42]
         elif self == VirusCategory.Level1:
             return self._getLevelList(0)
         elif self == VirusCategory.Level2:
@@ -319,6 +341,8 @@ class NameMaps(object):
         0x75: "Unlocker",
     }
 
+    chipInfoMap: Dict[int, ChipT_BN2] = {}
+
     @classmethod
     def setVirusNameMap(cls, m: Dict[int, str]):
         cls.virusNameMap = m
@@ -326,6 +350,14 @@ class NameMaps(object):
     @classmethod
     def setChipNameMap(cls, m: Dict[int, str]):
         cls.chipNameMap = m
+
+    @classmethod
+    def setChipInfoMap(cls, m: Dict[int, ChipT_BN2]):
+        cls.chipInfoMap = m
+
+    @classmethod
+    def getValidCodes(cls, ind: int):
+        return [code for code in NameMaps.chipInfoMap[ind].codes if code != 0xFF]
 
 
 class EncounterEntity(object):
@@ -420,15 +452,6 @@ class EncounterT_BN2:
         return " ".join(list(map(str, self.descs)) + list(map(str, self.entities)))
 
 
-def codeStr(code: int) -> str:
-    if code == 0xFF:
-        return ""
-    elif code == 0x1A:
-        return "*"
-    else:
-        return chr(ord("A") + code)
-
-
 class ShopElem(object):
     myStruct = struct.Struct("<4B4H")
 
@@ -492,6 +515,98 @@ class ShopInventory(object):
 
     def isSubChipShop(self):
         return all(not elem.isChip() for elem in self.elems)
+
+    def __str__(self) -> str:
+        return "\n".join(map(str, self.elems))
+
+
+class ChipItem(object):
+    myStruct = struct.Struct("<HH")
+
+    def __init__(self, data: bytearray, offset: int):
+        (self.chip, self.code) = self.myStruct.unpack_from(data, offset)
+
+    def serialize(self, data: bytearray, offset: int):
+        self.myStruct.pack_into(data, offset, self.chip, self.code)
+
+    @classmethod
+    def getSize(cls) -> int:
+        return cls.myStruct.size
+
+    def __str__(self) -> str:
+        return f"{NameMaps.chipNameMap.get(self.chip - 1)} {codeStr(self.code)}"
+
+
+class ChipFolder(object):
+    def __init__(self, data: bytearray, offset: int):
+        self.elems: List[ChipItem] = []
+        for _ in range(30):
+            self.elems.append(ChipItem(data, offset))
+            offset += ChipItem.getSize()
+
+    def serialize(self, data: bytearray, offset: int):
+        for elem in self.elems:
+            elem.serialize(data, offset)
+            offset += ChipItem.getSize()
+
+    def __str__(self) -> str:
+        return "\n".join(map(str, self.elems))
+
+
+class DropItem(object):
+    myStruct = struct.Struct("<BB")
+
+    def __init__(self, data: bytearray, offset: int):
+        (self.b1, self.b2) = self.myStruct.unpack_from(data, offset)
+
+    def serialize(self, data: bytearray, offset: int):
+        self.myStruct.pack_into(data, offset, self.b1, self.b2)
+
+    @classmethod
+    def getSize(cls) -> int:
+        return cls.myStruct.size
+
+    def isZenny(self) -> bool:
+        return bool(self.b2 & 0x40)
+
+    def isHP(self) -> bool:
+        return bool(self.b2 & 0x80)
+
+    def getHP(self) -> int:
+        return self.b1 | ((self.b2 & ~0x80) << 8)
+
+    def getZenny(self) -> int:
+        return self.b1 | ((self.b2 & ~0x40) << 8)
+
+    def getChipInd(self) -> int:
+        return self.b1 | ((self.b2 & 0x01) << 8)
+
+    def getChipCode(self) -> int:
+        return self.b2 >> 1
+
+    def __str__(self) -> str:
+        if self.isZenny():
+            return f"{self.getZenny()}z"
+        elif self.isHP():
+            hp = self.getHP()
+            return f"HP +{hp if hp else 'MAX'}"
+        elif self.b2 <= (0x1A << 1):
+            return f"{NameMaps.chipNameMap.get(self.getChipInd() - 1,self.getChipInd())} {codeStr(self.getChipCode())}"
+        else:
+            return f"UNMAPPED: {hex(self.b1)} {hex(self.b2)}"
+
+
+class DropTable(object):
+    def __init__(self, data: bytearray, offset: int):
+        self.elems: List[DropItem] = []
+        for _ in range(30):
+            self.elems.append(DropItem(data, offset))
+            offset += DropItem.getSize()
+
+    def serialize(self, data: bytearray, offset: int):
+        for elem in self.elems:
+            elem.serialize(data, offset)
+            offset += DropItem.getSize()
 
     def __str__(self) -> str:
         return "\n".join(map(str, self.elems))
