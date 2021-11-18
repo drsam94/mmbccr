@@ -3,6 +3,7 @@ import configparser
 import random
 from megadata import DataType, DataTypeVar
 from bn2data import (
+    DropTable,
     ShopInventory,
     EncounterT_BN2,
     VirusCategory,
@@ -195,6 +196,82 @@ def randomizeFolder(folder: ChipFolder, config: configparser.SectionProxy, ind: 
             chip.code = getValidCode(chip.chip, chip.code)
 
 
+def randomizeDropTable(table: DropTable, config: configparser.SectionProxy, ind: int):
+    if config["PopulateUnused"]:
+        lowKeys = (0, 1, 2, 3, 4, 10, 11, 12, 13, 14, 20, 21, 22, 23, 24)
+        midKeys = (5, 6, 7, 15, 16, 17, 25, 26, 27)
+        highKeys = (8, 9, 18, 19, 28, 29)
+        if ind == 29 or ind == 30:  # HardHead2 and HardHead3
+            for i in lowKeys:
+                table.elems[i].writeZenny(10 * ind)
+            for i in midKeys:
+                # Wrecker *
+                table.elems[i].writeChip(51, 0x1A)
+            for i in highKeys:
+                if ind == 29:
+                    # CannBall S
+                    table.elems[i].writeChip(52, 17)
+                else:
+                    # CannBall *
+                    table.elems[i].writeChip(52, 0x1A)
+        elif ind == 43:  # Poofy
+            for i in lowKeys:
+                table.elems[i].writeHP(0)
+            for i in midKeys:
+                # BubSprd L
+                table.elems[i].writeChip(11, 11)
+            for i in highKeys:
+                # HeatSprd L
+                table.elems[i].writeChip(15, 11)
+        elif ind == 44:  # Fishy 3
+            for i in lowKeys:
+                table.elems[i].writeZenny(10 * ind)
+            for i in midKeys:
+                # Dash Atk JG*
+                table.elems[i].writeChip(50, (9, 6, 0x1A)[i // 10])
+            for i in highKeys:
+                # Burner AS*
+                table.elems[i].writeChip(64, (0, 18, 0x1A)[i // 10])
+        elif ind == 54:  # Popper
+            for i in range(30):
+                table.elems[i].writeZenny(600)
+        elif ind == 61 or ind == 62:  # Flamey[23]
+            for i in range(30):
+                table.elems[i].writeZenny(600)
+        elif ind == 68:  # Goofball
+            for i in range(30):
+                table.elems[i].writeZenny(600)
+        elif ind == 92:  # Null&Void
+            for i in range(30):
+                table.elems[i].writeZenny(600)
+        elif ind == 101:  # StormBox
+            for i in range(30):
+                table.elems[i].writeZenny(600)
+        elif ind == 103 or ind == 104:  # {Blue,Green}UFO
+            for i in range(30):
+                table.elems[i].writeZenny(600)
+        elif ind == 109 or ind == 110:  # BrushMan[23]
+            for i in range(30):
+                table.elems[i].writeZenny(600)
+        elif ind == 112 or ind == 113:  # {Blue,Yellow}gon
+            for i in range(30):
+                table.elems[i].writeZenny(600)
+
+    randomizeChips = config["RandomizeChips"]
+    randomizeCodes = config["RandomizeCodes"]
+    for elem in table.elems:
+        if not elem.isZenny() and not elem.isHP():
+            chip = elem.getChipInd()
+            code = elem.getChipCode()
+            if randomizeChips:
+                chip = random.randint(1, 255)
+            if randomizeCodes:
+                code = getRandomCode(chip, config)
+            else:
+                code = getValidCode(chip, code)
+            elem.writeChip(chip, code)
+
+
 def _randomizeCommon(
     data: bytearray,
     config: configparser.SectionProxy,
@@ -221,3 +298,9 @@ def randomizeChips(data: bytearray, config: configparser.ConfigParser):
 
 def randomizeFolders(data: bytearray, config: configparser.ConfigParser):
     _randomizeCommon(data, config["Folders"], DataType.ChipFolder_BN2, randomizeFolder)
+
+
+def randomizeDropTables(data: bytearray, config: configparser.ConfigParser):
+    _randomizeCommon(
+        data, config["DropTables"], DataType.DropTable_BN2, randomizeDropTable
+    )

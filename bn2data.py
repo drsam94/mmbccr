@@ -584,6 +584,18 @@ class DropItem(object):
     def getChipCode(self) -> int:
         return self.b2 >> 1
 
+    def writeChip(self, ind: int, code: int):
+        self.b1 = ind & 0xFF
+        self.b2 = (code << 1) | (ind >> 8)
+
+    def writeZenny(self, zenny: int):
+        self.b1 = zenny & 0xFF
+        self.b2 = 0x40 | (zenny >> 8)
+
+    def writeHP(self, hp: int):
+        self.b1 = hp & 0xFF
+        self.b2 = 0x80 | (hp >> 8)
+
     def __str__(self) -> str:
         if self.isZenny():
             return f"{self.getZenny()}z"
