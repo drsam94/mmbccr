@@ -6,9 +6,11 @@ __pycache__/
 #Editor files
 .mypy_cache/
 .vscode/
+data/
 
 *.js
 # ROM-related files
 *.gba
 *.sav
 *.sa1
+*.sg1

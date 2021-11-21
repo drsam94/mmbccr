@@ -175,18 +175,30 @@ def randomizeChipInfo(chip: ChipT_BN2, config: configparser.SectionProxy, ind: i
             assignedCodes.append(codeToUse)
 
 
+def loadFolderFromFile(folder: ChipFolder, fname: str):
+    fldrFile = open(fname, "r")
+    invMap = {name: code + 1 for code, name in NameMaps.chipNameMap.items()}
+    for i, line in enumerate(fldrFile.readlines()):
+        elems = line[:-1].split(" ")
+        name, code, *_ = elems
+        folder.elems[i].chip = invMap[name]
+        folder.elems[i].code = 0x1A if code == "*" else ord(code) - ord("A")
+
+
 def randomizeFolder(folder: ChipFolder, config: configparser.SectionProxy, ind: int):
     randomizeTutorial = config.getboolean("RandomizeTutorial", False)
     if not randomizeTutorial and ind >= 3:
         return
 
+    key = f"Foldr{ind + 1}File"
+    if config.get(key):
+        loadFolderFromFile(folder, config.get(key))
+        return
     randomizeFolder = config.getboolean("RandomizeFolder")
     for chip in folder.elems:
         if randomizeFolder:
             # Just use standard chips for now
             chip.chip = random.randint(1, 193)
-
-        if randomizeFolder:
             chip.code = getRandomCode(chip.chip, config)
         else:
             # Adjust the code even if we aren't otherwise randomizing
@@ -293,7 +305,7 @@ def randomizeDropTable(table: DropTable, config: configparser.SectionProxy, ind:
             chip = elem.getChipInd()
             code = elem.getChipCode()
             if randomizeChips:
-                chip = random.randint(1, 266)
+                chip = random.randint(1, 265)
             if randomizeCodes:
                 code = getRandomCode(chip, config)
             else:

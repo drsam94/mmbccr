@@ -1,4 +1,4 @@
-from typing import Union, Dict, Any, cast, Iterable
+from typing import List, Union, Dict, Any, cast, Iterable
 import struct
 from enum import Enum
 import itertools
@@ -13,7 +13,7 @@ from bn2data import (
     DropTable,
 )
 
-from bccdata import EncounterT, ChipT, StringT, StartingChipsT
+from bccdata import EncounterT, ChipT, StringT, StartingChipsT, PrintOpts
 
 DataTypeVar = Union[
     EncounterT,

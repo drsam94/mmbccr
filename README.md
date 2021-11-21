@@ -1,5 +1,9 @@
 # mmbccr
-A Randomizer for Megaman Battlechip Challenge. Only has a CLI
+Randomizer for Magaman Battle Network games. Currentlyt he following games are supported:
+ * Megaman Battlechip Challenge (US)
+ * Megaman Battle Network 2 (US)
+
+This program only has a command line interface, though at some times may have a web interface also
 
 For inquiries, either post issues/pull requests to github or contact
 sam@samdonow.com
@@ -18,19 +22,20 @@ sam@samdonow.com
 * search.py: A tool for finding patterns in a ROM to detect what we are looking for
 * strconv.py: Encode/Decode a string to bcc format
 * distribution.py: A tool to play with the random distribtions used in the randomizer
-# Process
-Some documentation of how I went through finding out how the game stores data
-* Play with memory, see where stuff changes
-* Look in library, look for places in memory 23 <-> 16 swapping chips
-* Identify folder layout order
-* search ROM for folders of NAVIs
-* Look at tile data, identify sprite information, search for that in ROM
-* Search for literal use of pointers in the ROM, find a reference to chip folder, inspect nearby pointers
-* See one of these pointers is to an array of pointers, play with it and deduce it is the pointers to chip names
-* Check other pointers around there, find chip descriptions
-* Play with strings, eventually learn how chip effect descriptions are rendered, then search for such strings
 
-# Features
+
+# Features (BN2)
+This randomizer can randomize the following aspects of the game:
+ * The contents of obtained folders
+ * The codes of battlechips available
+ * The drop tables of random encounters
+ * The enemies faced in randomized and static encounters
+ * The chips available from NetDealers
+
+# Log (BN2)
+See documentation of supported configuration options in rando_bn2.conf (which will be loaded by the randomizer by default)
+
+# Features (BCC)
 This randomizer can randomizer the following aspects of the game:
 
 * The statistics of battle chips (and/or navi chips)
@@ -39,7 +44,7 @@ This randomizer can randomizer the following aspects of the game:
 * The operators of battles
 * The names of battle chips
 
-# Logic
+# Logic (BCC)
 To make a randomizer fun to play, it shouldn't just randomize arbitrarily. To this end, I have added the following options to customize how the randomizing works to tailor the experience. The style of randomization is determined by a conffile, the default one being rando.conf
 
 * ChipRange - specify values for the range to randomize over for chip mb/hp/ap. These values are percentages, so a value of 100 means a value will be picked uniformly between 10 and twice the original value
