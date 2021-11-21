@@ -35,7 +35,10 @@ def getValidCode(ind: int, code: int) -> int:
 
 
 def randomizeEncounter(
-    encounter: EncounterT_BN2, config: configparser.SectionProxy, type: DataType
+    encounter: EncounterT_BN2,
+    config: configparser.SectionProxy,
+    type: DataType,
+    idx: int,
 ):
     if encounter.isNaviBattle() and not config.getboolean("RandomizeNavis"):
         return
@@ -51,6 +54,9 @@ def randomizeEncounter(
             # Moles can make many events e.g tutorial virtually impossible
             # as escaping counts as a loss
             dontTouchCategories.append(VirusCategory.Mole)
+            if idx < 3:
+                # Shadows can make the tutorial impossible
+                dontTouchCategories.append(VirusCategory.Shadow)
         if any(cat.isInCategory(entity.idx) for cat in dontTouchCategories):
             continue
         prohibitCategories = dontTouchCategories + [VirusCategory.Navi]
@@ -98,7 +104,7 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
                 continue
             if not encounter.isEntities():
                 continue
-            randomizeEncounter(encounter, choices, type)
+            randomizeEncounter(encounter, choices, type, i)
             encounter.serialize(data, writeOffset)
 
 
@@ -163,7 +169,7 @@ def randomizeChipInfo(chip: ChipT_BN2, config: configparser.SectionProxy, ind: i
     if randomizeCodes:
         assignedCodes = []
         for i in range(0, 4):
-            if ind == 63 and i == 0:
+            if ind == 65 and i == 0:
                 # ZapRing2 B
                 codeToUse = 0x01
             else:
