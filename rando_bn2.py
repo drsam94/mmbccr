@@ -184,7 +184,7 @@ def randomizeFolder(folder: ChipFolder, config: configparser.SectionProxy, ind: 
     for chip in folder.elems:
         if randomizeFolder:
             # Just use standard chips for now
-            chip.chip = random.randint(0, 193)
+            chip.chip = random.randint(1, 193)
 
         if randomizeFolder:
             chip.code = getRandomCode(chip.chip, config)
@@ -198,6 +198,7 @@ def randomizeFolder(folder: ChipFolder, config: configparser.SectionProxy, ind: 
 
 def randomizeDropTable(table: DropTable, config: configparser.SectionProxy, ind: int):
     if config["PopulateUnused"]:
+
         lowKeys = (0, 1, 2, 3, 4, 10, 11, 12, 13, 14, 20, 21, 22, 23, 24)
         midKeys = (5, 6, 7, 15, 16, 17, 25, 26, 27)
         highKeys = (8, 9, 18, 19, 28, 29)
@@ -233,30 +234,58 @@ def randomizeDropTable(table: DropTable, config: configparser.SectionProxy, ind:
                 # Burner AS*
                 table.elems[i].writeChip(64, (0, 18, 0x1A)[i // 10])
         elif ind == 54:  # Popper
-            for i in range(30):
-                table.elems[i].writeZenny(600)
+            for i in midKeys:
+                # LeafShld
+                table.elems[i].writeChip(164, (0, 3, 17)[i // 10])
+            for i in highKeys:
+                # DropDown
+                table.elems[i].writeChip(156, (0, 2, 5)[i // 10])
         elif ind == 61 or ind == 62:  # Flamey[23]
-            for i in range(30):
-                table.elems[i].writeZenny(600)
+            for i in highKeys:
+                # LineOut
+                code = (5, 7, 9)[i // 10] if ind == 61 else 0x1A
+                table.elems[i].writeChip(115, code)
         elif ind == 68:  # Goofball
-            for i in range(30):
-                table.elems[i].writeZenny(600)
+            for i in midKeys:
+                # PoisFace
+                table.elems[i].writeChip(108, (19, 20, 0x1A)[i // 10])
+            for i in highKeys:
+                # Geddon3
+                table.elems[i].writeChip(135, 0x1A)
         elif ind == 92:  # Null&Void
-            for i in range(30):
-                table.elems[i].writeZenny(600)
+            for i in midKeys:
+                # Whirlpl
+                table.elems[i].writeChip(109, (0, 2, 0x1A)[i // 10])
+            for i in highKeys:
+                # BlckHole
+                table.elems[i].writeChip(110, (1, 3, 0x1A)[1 // 10])
         elif ind == 101:  # StormBox
-            for i in range(30):
-                table.elems[i].writeZenny(600)
+            for i in midKeys:
+                # Wind
+                table.elems[i].writeChip(147, 0x1A)
+            for i in midKeys:
+                # Fan
+                table.elems[i].writeChip(148, 0x1A)
         elif ind == 103 or ind == 104:  # {Blue,Green}UFO
-            for i in range(30):
-                table.elems[i].writeZenny(600)
+            for i in midKeys:
+                # AntiDmg
+                table.elems[i].writeChip(185, 0x1A)
+            for i in highKeys:
+                # AntiNavi
+                table.elems[i].writeChip(186, 0x1A)
         elif ind == 109 or ind == 110:  # BrushMan[23]
-            for i in range(30):
-                table.elems[i].writeZenny(600)
+            for i in midKeys:
+                # HolyPanel
+                table.elems[i].writeChip(179, 0x1A)
+            for i in highKeys:
+                # Snctuary
+                table.elems[i].writeChip(271, 0x1A)
         elif ind == 112 or ind == 113:  # {Blue,Yellow}gon
-            for i in range(30):
-                table.elems[i].writeZenny(600)
+            for i in highKeys:
+                # LavaDrag
+                table.elems[i].writeChip(104, 0x1A)
 
+    # TODO: options to drop more chips and less zenny?
     randomizeChips = config["RandomizeChips"]
     randomizeCodes = config["RandomizeCodes"]
     for elem in table.elems:
@@ -264,7 +293,7 @@ def randomizeDropTable(table: DropTable, config: configparser.SectionProxy, ind:
             chip = elem.getChipInd()
             code = elem.getChipCode()
             if randomizeChips:
-                chip = random.randint(1, 255)
+                chip = random.randint(1, 266)
             if randomizeCodes:
                 code = getRandomCode(chip, config)
             else:

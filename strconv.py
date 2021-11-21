@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-from megadata import *
+from bccdata import MMChar
 from textwrap import wrap
 
 

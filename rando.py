@@ -43,6 +43,8 @@ def randomize(
 
         megadata.populateBN2Meta(byteData)
         rando_bn2.randomizeChips(byteData, config)
+        # Regenerate meta based on the updated chip data
+        megadata.populateBN2Meta(byteData)
         rando_bn2.randomizeEncounters(byteData, config)
         rando_bn2.randomizeShops(byteData, config)
         rando_bn2.randomizeFolders(byteData, config)

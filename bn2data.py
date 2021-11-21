@@ -357,7 +357,7 @@ class NameMaps(object):
 
     @classmethod
     def getValidCodes(cls, ind: int):
-        return [code for code in NameMaps.chipInfoMap[ind].codes if code != 0xFF]
+        return [code for code in NameMaps.chipInfoMap[ind - 1].codes if code != 0xFF]
 
 
 class EncounterEntity(object):
@@ -534,7 +534,10 @@ class ChipItem(object):
         return cls.myStruct.size
 
     def __str__(self) -> str:
-        return f"{NameMaps.chipNameMap.get(self.chip - 1)} {codeStr(self.code)}"
+
+        return (
+            f"{NameMaps.chipNameMap.get(self.chip - 1, self.chip)} {codeStr(self.code)}"
+        )
 
 
 class ChipFolder(object):
@@ -602,10 +605,8 @@ class DropItem(object):
         elif self.isHP():
             hp = self.getHP()
             return f"HP +{hp if hp else 'MAX'}"
-        elif self.b2 <= (0x1A << 1):
-            return f"{NameMaps.chipNameMap.get(self.getChipInd() - 1,self.getChipInd())} {codeStr(self.getChipCode())}"
         else:
-            return f"UNMAPPED: {hex(self.b1)} {hex(self.b2)}"
+            return f"{NameMaps.chipNameMap.get(self.getChipInd() - 1,self.getChipInd())} {codeStr(self.getChipCode())}"
 
 
 class DropTable(object):
