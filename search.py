@@ -1,9 +1,19 @@
 #!/usr/bin/python
 
+from os import extsep
 import sys
 import argparse
 from typing import List, Any, Dict
 from megadata import DataType
+
+
+def getDatum(data: bytearray, ind: int, args: Any):
+    ret = 0
+    for i in range(args.dataSize):
+        ret <<= 8
+        index = ind * args.dataSize + (args.dataSize - i - 1)
+        ret += data[index]
+    return ret
 
 
 def search(pattern: List[int], data: bytearray, args: Any) -> List[int]:
@@ -11,18 +21,24 @@ def search(pattern: List[int], data: bytearray, args: Any) -> List[int]:
     rooted: bool = args.rooted
     ind = 0
     patInd = 0
-    dataLen = len(data)
+    dataLen = len(data) / args.dataSize
     patLen = len(pattern)
     ret: List[int] = []
     varMap: Dict[int, int] = {}
     while ind < dataLen:
         isMatch = False
         if not args.delta and not args.variable:
-            isMatch = data[ind] == pattern[patInd]
+            isMatch = getDatum(data, ind, args) == pattern[patInd]
         elif args.delta:
-            prev = data[ind - patInd * stride] if rooted else data[ind - stride]
+            prev = (
+                getDatum(data, ind - patInd * stride, args)
+                if rooted
+                else getDatum(data, ind - stride, args)
+            )
             if patInd == 0:
-                isMatch = not args.middleStart or (data[ind] != 0 and data[ind] != 255)
+                isMatch = not args.middleStart or (
+                    getDatum(data, ind, args) != 0 and getDatum(data, ind, args) != 255
+                )
             elif pattern[patInd - 1] == 300:
                 isMatch = True
             elif pattern[patInd - 1] == 400:
@@ -32,18 +48,18 @@ def search(pattern: List[int], data: bytearray, args: Any) -> List[int]:
         elif args.variable:
             if patInd == 0:
                 varMap = {}
-            if data[ind] in varMap:
-                isMatch = varMap[data[ind]] == pattern[patInd]
+            if getDatum(data, ind, args) in varMap:
+                isMatch = varMap[getDatum(data, ind, args)] == pattern[patInd]
             elif pattern[patInd] == 0:
                 isMatch = True
             elif pattern[patInd] in varMap.values():
                 isMatch = False
             else:
                 isMatch = True
-                varMap[data[ind]] = pattern[patInd]
+                varMap[getDatum(data, ind, args)] = pattern[patInd]
         if isMatch:
             if patInd == patLen - (0 if args.delta else 1):
-                ret.append(ind - patInd * args.stride)
+                ret.append((ind - patInd * args.stride) * args.dataSize)
                 patInd = 0
             else:
                 patInd += 1
@@ -102,6 +118,7 @@ def main():
     parser.add_argument("--printDelta", action="store_true")
     parser.add_argument("--maxDelta", metavar="maxDelta", type=int, default=0)
     parser.add_argument("--skipMapped", action="store_true")
+    parser.add_argument("--dataSize", metavar="dataSize", type=int, default=1)
     parser.add_argument("file", metavar="file", type=str)
     parser.add_argument("pattern", metavar="code", type=str, nargs="+")
     args = parser.parse_args()

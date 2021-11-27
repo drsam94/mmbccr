@@ -72,7 +72,7 @@ class BN2Char:
 
     @classmethod
     def isTerminator(cls, char: int) -> bool:
-        return char == 0xE7
+        return char >= 0xE7
 
 
 def codeStr(code: int) -> str:

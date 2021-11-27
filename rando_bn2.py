@@ -151,7 +151,7 @@ def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy, ind: i
         wasFixedInd = fixedInd
         while not fixedInd:
             elem.ind = random.randint(1, 264)
-            fixedInd = elem.ind != 256  # Broken index
+            fixedInd = elem.ind not in [256, 257, 258]  # Broken index
             # Fighter sword but crash
             # TODO: check other high values?
 
@@ -215,7 +215,7 @@ def randomizeFolder(folder: ChipFolder, config: configparser.SectionProxy, ind: 
 
 
 def randomizeDropTable(table: DropTable, config: configparser.SectionProxy, ind: int):
-    if config["PopulateUnused"]:
+    if config.getboolean("PopulateUnused"):
 
         lowKeys = (0, 1, 2, 3, 4, 10, 11, 12, 13, 14, 20, 21, 22, 23, 24)
         midKeys = (5, 6, 7, 15, 16, 17, 25, 26, 27)
@@ -304,8 +304,8 @@ def randomizeDropTable(table: DropTable, config: configparser.SectionProxy, ind:
                 table.elems[i].writeChip(104, 0x1A)
 
     # TODO: options to drop more chips and less zenny?
-    randomizeChips = config["RandomizeChips"]
-    randomizeCodes = config["RandomizeCodes"]
+    randomizeChips = config.getboolean("RandomizeChips")
+    randomizeCodes = config.getboolean("RandomizeCodes")
     for elem in table.elems:
         if not elem.isZenny() and not elem.isHP():
             chip = elem.getChipInd()

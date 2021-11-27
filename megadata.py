@@ -56,12 +56,14 @@ class DataType(Enum):
     ShopInventory_BN2 = 16
     ChipFolder_BN2 = 17
     DropTable_BN2 = 18
+    GMD_BN2 = 19
 
     def isVarLengthString(self):
         return self in [
             DataType.ChipName_BN2,
             DataType.VirusName_BN2,
             DataType.ItemName_BN2,
+            DataType.GMD_BN2,
         ]
 
     def getOffset(self) -> int:
@@ -108,6 +110,9 @@ class DataType(Enum):
             return 0x009974
         elif self == DataType.DropTable_BN2:
             return 0x012624
+        elif self == DataType.GMD_BN2:
+            # Den 2 GMD chip defns
+            return 0x771676  # 0x771706
         raise KeyError("bad value")
 
     def getSize(self, obj: Any = None) -> int:
@@ -186,6 +191,8 @@ class DataType(Enum):
             return 6
         elif self == DataType.DropTable_BN2:
             return 184
+        elif self == DataType.GMD_BN2:
+            return 200
         raise KeyError("bad value")
 
     def parseAtOffset(self, data: bytearray, offset: int) -> DataTypeVar:
