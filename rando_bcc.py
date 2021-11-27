@@ -1,10 +1,12 @@
 #!/usr/bin/python
 
 from megadata import *
+from bccdata import Element
 from distribution import getValWithVar, getPoissonRandom
 import configparser
 import random
-from typing import Optional,Callable
+from typing import Callable
+
 
 def randomizeChips(data: bytearray, config: configparser.ConfigParser):
     type = DataType.Chip
@@ -93,7 +95,6 @@ def hasBadAtkBooster(chipMap, enc: EncounterT, j: int) -> bool:
     return False
 
 
-
 def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
     choices = config["Encounters"]
     mbMap = Library.getMBMap(data)
@@ -109,7 +110,7 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
         random.shuffle(shuffledEncs)
     writeEncs = []
 
-    def randomizeChipList(chipArr: List[int], rejectCB: Callable[[int],bool]):
+    def randomizeChipList(chipArr: List[int], rejectCB: Callable[[int], bool]):
         for j, chip in enumerate(chipArr):
             if chip == 0:
                 if not fillChips:
@@ -132,6 +133,7 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
                     chipArr[j] = 1 + random.choice(myMap)
                     if not rejectCB(j):
                         break
+
     if config["ChipGlobal"].getboolean("randomizeStartingChips", fallback=True):
         startingChips = DataType.StartingChips.parse(data, 0)
         assert isinstance(startingChips, StartingChipsT)
@@ -144,7 +146,7 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
         assert isinstance(enc, EncounterT)
         if randomOp:
             enc.op = random.randint(0, 125)
-        filterCB = lambda ind: doAtkFilter and hasBadAtkBooster(chipMap,enc,ind)
+        filterCB = lambda ind: doAtkFilter and hasBadAtkBooster(chipMap, enc, ind)
         randomizeChipList(enc.chips, filterCB)
         if randomizeNavi:
             enc.navi = random.choice(list(Library.naviChipRange()))
