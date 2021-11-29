@@ -1,5 +1,5 @@
 # mmbccr
-Randomizer for Magaman Battle Network games. Currentlyt he following games are supported:
+Randomizer for Magaman Battle Network games. Currently the following games are supported:
  * Megaman Battlechip Challenge (US)
  * Megaman Battle Network 2 (US)
 
@@ -9,11 +9,12 @@ For inquiries, either post issues/pull requests to github or contact
 sam@samdonow.com
 
 # How to use
- Requires a modern version of python (>= 3.6), and a ROM of Megaman Battlechip challenge
+ Requires a modern version of python (>= 3.6), and a US ROM of Megaman Battlechip challenge, or of Megaman Battle Network 2
 ```
     # Easiest invocation Usage
     python rando.py inFile outFile
     # With optional flags, or --help to see these options
+    # By default either rando_bn2.conf or rando_bcc.conf will be used
     python rando.py inFile outFile [--conf rando.conf] [--seed seed]
 ```
 # tools
