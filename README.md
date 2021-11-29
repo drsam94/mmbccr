@@ -15,7 +15,7 @@ sam@samdonow.com
     python rando.py inFile outFile
     # With optional flags, or --help to see these options
     # By default either rando_bn2.conf or rando_bcc.conf will be used
-    python rando.py inFile outFile [--conf rando.conf] [--seed seed]
+    python3 rando.py inFile outFile [--conf rando.conf] [--seed seed]
 ```
 # tools
 * rando.py: The randomizer itself
