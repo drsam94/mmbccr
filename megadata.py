@@ -111,8 +111,7 @@ class DataType(Enum):
         elif self == DataType.DropTable_BN2:
             return 0x012624
         elif self == DataType.GMD_BN2:
-            # Den 2 GMD chip defns
-            return 0x771676  # 0x771706
+            return 0
         raise KeyError("bad value")
 
     def getSize(self, obj: Any = None) -> int:
@@ -192,7 +191,7 @@ class DataType(Enum):
         elif self == DataType.DropTable_BN2:
             return 184
         elif self == DataType.GMD_BN2:
-            return 200
+            return 0
         raise KeyError("bad value")
 
     def parseAtOffset(self, data: bytearray, offset: int) -> DataTypeVar:

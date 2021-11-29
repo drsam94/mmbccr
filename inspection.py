@@ -3,7 +3,7 @@
 import sys
 import argparse
 from megadata import *
-from bn2data import BN2Char, EncounterT_BN2, VirusT_BN2, NameMaps
+from bn2data import BN2Char, EncounterT_BN2, GMD
 
 
 def main():
@@ -31,8 +31,13 @@ def main():
         DataType.ShopInventory_BN2,
         DataType.ChipFolder_BN2,
         DataType.DropTable_BN2,
+        DataType.GMD_BN2,
     ]:
         populateBN2Meta(byteData)
+
+    if type == DataType.GMD_BN2:
+        print(GMD(byteData))
+        return
 
     offset = type.getOffset()
     for i in range(type.getArrayLength()):

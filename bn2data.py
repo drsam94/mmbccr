@@ -359,6 +359,10 @@ class NameMaps(object):
     def getValidCodes(cls, ind: int):
         return [code for code in NameMaps.chipInfoMap[ind - 1].codes if code != 0xFF]
 
+    @classmethod
+    def getChipName(cls, ind: int):
+        return cls.chipNameMap.get(ind - 1, ind)
+
 
 class EncounterEntity(object):
     myStruct = struct.Struct("<4B")
@@ -489,7 +493,7 @@ class ShopElem(object):
 
     def getName(self) -> str:
         if self.isChip():
-            return NameMaps.chipNameMap.get(self.ind - 1, self.ind)
+            return NameMaps.getChipName(self.ind)
         else:
             return NameMaps.itemNameMap.get(self.ind, f"SubChip{hex(self.ind)}")
 
@@ -535,9 +539,7 @@ class ChipItem(object):
 
     def __str__(self) -> str:
 
-        return (
-            f"{NameMaps.chipNameMap.get(self.chip - 1, self.chip)} {codeStr(self.code)}"
-        )
+        return f"{NameMaps.getChipName(self.chip)} {codeStr(self.code)}"
 
 
 class ChipFolder(object):
@@ -606,7 +608,7 @@ class DropItem(object):
             hp = self.getHP()
             return f"HP +{hp if hp else 'MAX'}"
         else:
-            return f"{NameMaps.chipNameMap.get(self.getChipInd() - 1,self.getChipInd())} {codeStr(self.getChipCode())}"
+            return f"{NameMaps.getChipName(self.getChipInd())} {codeStr(self.getChipCode())}"
 
 
 class DropTable(object):
@@ -623,3 +625,144 @@ class DropTable(object):
 
     def __str__(self) -> str:
         return "\n".join(map(str, self.elems))
+
+
+class OffInfo(object):
+    myStruct = struct.Struct("<BBB")
+
+    def __init__(self, pre=0, *, innerByte=False, noCode=False, noChip=False):
+        # Number of bytes from prior offset to this offset; ideally I will at
+        # some point understand the interpretation of these bytes but for now
+        # they are treated as opaque
+        self.pre = pre
+        # Sometimes there is a byte between a chip index and code, or the two
+        # bytes of a zenny amount, I don't know why but this tracks when that
+        # happens
+        self.innerByte = innerByte
+        # The code byte, or the MSB of the zenny amount is missing
+        self.noCode = noCode
+        # The chip index byte, or the LSB of the zenny amount is missing
+        self.noChip = noChip
+
+    def toString(self, data: bytearray, offset: int, *, isZenny=False) -> str:
+        if isZenny:
+            if self.noCode:
+                return "?? Z"
+            else:
+                return f"{self.getZennyValue(data, offset)} Z"
+        else:
+            chip, code = self.getChipAndCode(data, offset)
+            return (
+                f"{NameMaps.getChipName(chip) if not self.noChip else '_'} "
+                f"{codeStr(code) if not self.noCode else '_'}"
+            )
+
+    def getChipAndCode(self, data: bytearray, offset: int) -> Tuple[int, int]:
+        b1, b2, b3 = self.myStruct.unpack_from(data, offset + self.pre)
+        if self.innerByte:
+            b2 = b3
+        if self.noChip:
+            b2 = b1
+        return b1, b2
+
+    def getZennyValue(self, data: bytearray, offset: int) -> int:
+        b1, b2 = self.getChipAndCode(data, offset)
+        return b1 | (b2 << 8)
+
+    def fullyMutable(self) -> bool:
+        return not self.noCode and not self.noChip
+
+    def getSize(self) -> int:
+        if self.innerByte:
+            return self.pre + 3
+        elif self.fullyMutable():
+            return self.pre + 2
+        else:
+            return self.pre + 1
+
+    def serializeChip(self, data: bytearray, offset: int, chip: int, code: int):
+        if not self.noChip:
+            data[offset + self.pre] = chip
+        if not self.noCode:
+            data[offset + self.pre + 1 + int(self.innerByte)] = code
+
+    def serializeZenny(self, data: bytearray, offset: int, zenny: int):
+        b1 = zenny & 0xFF
+        b2 = zenny >> 8
+        self.serializeChip(data, offset, b1, b2)
+
+
+class GMDInfo(object):
+    def __init__(self, offset, chips=[], zennies=[]):
+        self.offset = offset
+        self.chips = chips
+        self.zennies = zennies
+
+    def toString(self, data: bytearray) -> str:
+        offs = self.offset
+        ret = ""
+        for chip in self.chips:
+            ret += chip.toString(data, offs, isZenny=False)
+            ret += "\n"
+            offs += chip.getSize()
+        for zennies in self.zennies:
+            ret += zennies.toString(data, offs, isZenny=True)
+            ret += "\n"
+            offs += zennies.getSize()
+        return ret
+
+
+class GMD(object):
+    # fmt: off
+    info = [
+            GMDInfo(0x7716FE, [OffInfo(3), OffInfo(0, innerByte=True), OffInfo(), OffInfo()],
+                              [OffInfo(19), OffInfo(2, noCode=True), OffInfo(2), OffInfo(3)]), 
+            GMDInfo(0x7720C1, [OffInfo(4), OffInfo(2), OffInfo(2, noCode=True), OffInfo(3)],
+                              [OffInfo(27), OffInfo(2), OffInfo(3), OffInfo(2)]),
+            GMDInfo(0x774CFF, [OffInfo(4), OffInfo(2), OffInfo(2), OffInfo(3)],
+                              [OffInfo(19), OffInfo(5), OffInfo(2), OffInfo(3)]),
+            GMDInfo(0x775156, [OffInfo(3), OffInfo(2, noCode=True), OffInfo(3), OffInfo(2)],
+                              [OffInfo(28), OffInfo(5), OffInfo(2), OffInfo(3)]),
+            GMDInfo(0x77673D, [OffInfo(3, noCode=True), OffInfo(2, innerByte=True), OffInfo(2), OffInfo(2)],
+                              [OffInfo(22), OffInfo(7), OffInfo(2, innerByte=True), OffInfo(2)]),
+            GMDInfo(0x777031, [OffInfo(8), OffInfo(2), OffInfo(3), OffInfo(5)],
+                              [OffInfo(21), OffInfo(6), OffInfo(2, innerByte=True), OffInfo(0, innerByte=True)]),
+            GMDInfo(0x777A3C, [OffInfo(3), OffInfo(3), OffInfo(2, noCode=True), OffInfo(3, innerByte=True)],
+                              [OffInfo(20), OffInfo(5), OffInfo(2, innerByte=True), OffInfo(2)]),
+            GMDInfo(0x7785B2, [OffInfo(3, innerByte=True), OffInfo(2), OffInfo(2), OffInfo(3)],
+                              [OffInfo(27), OffInfo(4, noCode=True), OffInfo(3), OffInfo(2)]),
+            GMDInfo(0x778D8C, [OffInfo(3), OffInfo(3), OffInfo(2), OffInfo(2)],
+                              [OffInfo(25, innerByte=True), OffInfo(4), OffInfo(2, innerByte=True), OffInfo(2)]),
+            # 0x77A1C8, [],
+            GMDInfo(0x77A4B0, [OffInfo(3), OffInfo(3, noCode=True), OffInfo(2, noCode=True), OffInfo(2)],
+                              [OffInfo(27, innerByte=True), OffInfo(4), OffInfo(2, innerByte=True), OffInfo(6)]),
+            GMDInfo(0x77A807, [OffInfo(4), OffInfo(2, noChip=True), OffInfo(2, noChip=True), OffInfo(3, noChip=True)],
+                              [OffInfo(25), OffInfo(6), OffInfo(3), OffInfo(2)]),
+            GMDInfo(0x77AE0B, [OffInfo(3, innerByte=True), OffInfo(2), OffInfo(2), OffInfo(3)],
+                              [OffInfo(28), OffInfo(5), OffInfo(2, innerByte=True), OffInfo(2)]),
+            GMDInfo(0x77B21B, [OffInfo(4), OffInfo(2), OffInfo(2, innerByte=True), OffInfo(2)],
+                              [OffInfo(29, innerByte=True)]),
+            GMDInfo(0x77B62D, [],
+                              [OffInfo(38, innerByte=True), OffInfo(8)]),
+            GMDInfo(0x77BB1C, [OffInfo(3), OffInfo(3), OffInfo(2), OffInfo(2)],
+                              [OffInfo(28), OffInfo(4), OffInfo(3), OffInfo(2)]),
+            GMDInfo(0x77BDD2, [OffInfo(3, noCode=True), OffInfo(3, noChip=True), OffInfo(2, noChip=True), OffInfo(2)],
+                              []),
+            GMDInfo(0x77C1B0, [OffInfo(3), OffInfo(3, noCode=True), OffInfo(2, noCode=True), OffInfo(2)],
+                              [OffInfo(21), OffInfo(5), OffInfo(2), OffInfo(2)]),
+            GMDInfo(0x77C465, [OffInfo(4), OffInfo(2, noCode=True), OffInfo(2, noCode=True), OffInfo(3)],
+                              [OffInfo(21), OffInfo(4), OffInfo(3), OffInfo(2)]),
+            GMDInfo(0x77C815, [OffInfo(3), OffInfo(2), OffInfo(3), OffInfo(2)],
+                              [OffInfo(21), OffInfo(5), OffInfo(2), OffInfo(2)]),
+        ]
+
+    def __init__(self, data):
+        self.data = data
+
+    def __str__(self):
+        ret = ""
+        for i, elem in enumerate(self.info):
+            ret += f"{i}: {elem.toString(self.data)}"
+        return ret
+
+    # fmt: on

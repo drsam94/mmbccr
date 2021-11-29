@@ -49,6 +49,7 @@ def randomize(
         rando_bn2.randomizeShops(byteData, config)
         rando_bn2.randomizeFolders(byteData, config)
         rando_bn2.randomizeDropTables(byteData, config)
+        rando_bn2.randomizeGMD(byteData, config)
     return seed
 
 

@@ -1,4 +1,4 @@
-from typing import List, cast, Callable, Any
+from typing import List, cast, Callable, Any, Tuple
 import configparser
 import random
 from megadata import DataType, DataTypeVar
@@ -10,6 +10,7 @@ from bn2data import (
     NameMaps,
     ChipT_BN2,
     ChipFolder,
+    GMD,
 )
 from distribution import getValWithVar, getPoissonRandom
 
@@ -50,16 +51,17 @@ def randomizeEncounter(
             # Megaman or obstacle, do not change
             continue
         dontTouchCategories = [VirusCategory.Protecto, VirusCategory.Dragon]
-        if type == DataType.EncounterEVT_BN2:
-            # Moles can make many events e.g tutorial virtually impossible
-            # as escaping counts as a loss
-            dontTouchCategories.append(VirusCategory.Mole)
-            if idx < 3:
-                # Shadows can make the tutorial impossible
-                dontTouchCategories.append(VirusCategory.Shadow)
+
         if any(cat.isInCategory(entity.idx) for cat in dontTouchCategories):
             continue
         prohibitCategories = dontTouchCategories + [VirusCategory.Navi]
+        if type == DataType.EncounterEVT_BN2:
+            # Moles can make many events e.g tutorial virtually impossible
+            # as escaping counts as a loss
+            prohibitCategories.append(VirusCategory.Mole)
+            if idx < 3:
+                # Shadows can make the tutorial impossible
+                prohibitCategories.append(VirusCategory.Shadow)
         oldLevel = VirusCategory.getLevel(entity.idx)
         while True:
             newVal = random.randint(1, 177)
@@ -214,6 +216,20 @@ def randomizeFolder(folder: ChipFolder, config: configparser.SectionProxy, ind: 
             chip.code = getValidCode(chip.chip, chip.code)
 
 
+def randomizeChipAndCode(
+    chip: int, code: int, config: configparser.SectionProxy
+) -> Tuple[int, int]:
+    randomizeChips = config.getboolean("RandomizeChips")
+    randomizeCodes = config.getboolean("RandomizeCodes")
+    if randomizeChips:
+        chip = random.randint(1, 265)
+    if randomizeCodes:
+        code = getRandomCode(chip, config)
+    else:
+        code = getValidCode(chip, code)
+    return chip, code
+
+
 def randomizeDropTable(table: DropTable, config: configparser.SectionProxy, ind: int):
     if config.getboolean("PopulateUnused"):
 
@@ -296,13 +312,15 @@ def randomizeDropTable(table: DropTable, config: configparser.SectionProxy, ind:
                 # HolyPanel
                 table.elems[i].writeChip(179, 0x1A)
             for i in highKeys:
-                # Snctuary
-                table.elems[i].writeChip(271, 0x1A)
+                # TODO: Sanctuary? Make sure it works
+                table.elems[i].writeChip(179, 0x1A)
         elif ind == 112 or ind == 113:  # {Blue,Yellow}gon
             for i in highKeys:
                 # LavaDrag
                 table.elems[i].writeChip(104, 0x1A)
 
+    if ind >= 128 and not config.getboolean("RandomizeNavis"):
+        return
     # TODO: options to drop more chips and less zenny?
     randomizeChips = config.getboolean("RandomizeChips")
     randomizeCodes = config.getboolean("RandomizeCodes")
@@ -310,13 +328,45 @@ def randomizeDropTable(table: DropTable, config: configparser.SectionProxy, ind:
         if not elem.isZenny() and not elem.isHP():
             chip = elem.getChipInd()
             code = elem.getChipCode()
-            if randomizeChips:
-                chip = random.randint(1, 265)
-            if randomizeCodes:
-                code = getRandomCode(chip, config)
-            else:
-                code = getValidCode(chip, code)
+            chip, code = randomizeChipAndCode(chip, code, config)
             elem.writeChip(chip, code)
+
+
+def randomizeGMD(data: bytearray, configuration: configparser.ConfigParser):
+    gmd = GMD(data)
+    config = configuration["GMD"]
+    for info in gmd.info:
+        lastChip = -1
+        lastCode = 0x1A
+        offs = info.offset
+        for chipInfo in info.chips:
+            chip, code = chipInfo.getChipAndCode(data, offs)
+            if chipInfo.noCode:
+                code = lastCode
+            if chipInfo.noChip:
+                chip = lastChip
+            assert chip >= 0
+            done = False
+            while not done:
+                chip, code = randomizeChipAndCode(chip, code, config)
+                # Only one byte apparently available for GMD chip info
+                done = chip <= 0xFF
+            chipInfo.serializeChip(data, offs, chip, code)
+            offs += chipInfo.getSize()
+            lastChip, lastCode = chip, code
+        for zenny in info.zennies:
+            if not zenny.fullyMutable():
+                continue
+            zenValue = zenny.getZennyValue(data, offs)
+            r = 1 + random.random() * 4
+            if random.random() > 0.5:
+                zenValue = int(zenValue * 1 / r)
+                zenValue = max(zenValue, 100)
+            else:
+                zenValue = int(zenValue * r)
+                zenValue = min(zenValue, 2 ** 16 - 1)
+            zenny.serializeZenny(data, offs, zenValue)
+            offs += zenny.getSize()
 
 
 def _randomizeCommon(

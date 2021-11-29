@@ -28,12 +28,25 @@ sam@samdonow.com
 This randomizer can randomize the following aspects of the game:
  * The contents of obtained folders
  * The codes of battlechips available
- * The drop tables of random encounters
+ * The drop tables of random encounters 
+   * Somewhat reasonable drop tables can be added for viruses normally not found in encounters
  * The enemies faced in randomized and static encounters
  * The chips available from NetDealers
+ * Chips and Zenny dropped from GMD
 
-# Log (BN2)
+# Logic (BN2)
 See documentation of supported configuration options in rando_bn2.conf (which will be loaded by the randomizer by default)
+
+# Known Deficiencies (BN2)
+ * FtrSword and KnghtSwrd are not supported in NetDealers due to crashes observed in testing (apparently due to the details of how the text data for these chips are stored)
+ * Certain GMDs do not have independent their chip or code set independently from other GMDs. In these cases, the code displayed in text may be different from what ends up in the folder. An example of this are the chips that are normally WideSwrd Y and LongSwrd Y in Den 3; if WideSwrd is unchanged and LongSwrd is randomized to a chip that doesn't support the code Y, then the message will say an e.g Cannon Y is received, but that will be converted to a valid code of Cannon in the pack
+ * I am still investigating how BMDs and PMDs are stored in order to randomize those
+ * Randomizing Navis into battles seems to work, but I have not yet supported it due to not having thought through the best way to apply it
+ * Virus battles are currently not randomized with regards for the field:
+   * CanDevil viruses can be spawned without candles
+   * Mushy viruses can be spawned on non-grass
+   * The Lavagon family of viruses are not ranzomized due to this restriction
+ * If the available codes of chips are randomized, then code-based Program Advances won't work (e.g Z-Cannon) though other P.As (e.g Gater) will work. This can be worked around but I have not done so yet.
 
 # Features (BCC)
 This randomizer can randomizer the following aspects of the game:
