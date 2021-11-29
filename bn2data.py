@@ -326,6 +326,12 @@ class VirusCategory(Enum):
 
 
 class NameMaps(object):
+    """
+    NameMaps is a collection of static info on viruses and chips that may be
+    needed from multiple places; mostly in toStrings other than the chipInfoMap
+    which is used to e.g check the available codes for certain chips
+    """
+
     virusNameMap: Dict[int, str] = {}
     chipNameMap: Dict[int, str] = {}
     # Unclear to me what this ordering is / how to directly derive

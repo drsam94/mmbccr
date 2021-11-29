@@ -12,7 +12,7 @@ from bn2data import (
     ChipFolder,
     GMD,
 )
-from distribution import getValWithVar, getPoissonRandom
+from distribution import getPoissonRandom
 
 
 def getRandomCode(ind: int, config: configparser.SectionProxy) -> int:

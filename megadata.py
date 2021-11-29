@@ -111,6 +111,8 @@ class DataType(Enum):
         elif self == DataType.DropTable_BN2:
             return 0x012624
         elif self == DataType.GMD_BN2:
+            # GMDs are handled very specially, see the GMD class for
+            # more details
             return 0
         raise KeyError("bad value")
 
