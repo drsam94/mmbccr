@@ -114,7 +114,7 @@ def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy, ind: i
     if shop.isSubChipShop():
         return
 
-    if not config.getboolean("RandomizeChipShops"):
+    if not config.getboolean("RandomizeChips"):
         return
     minShopElements = min(8, config.getint("MinElements", 8))
     cheapPowerUps = config.getboolean("CheapPowerUps")
@@ -150,19 +150,14 @@ def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy, ind: i
             elem.qty = 1 + getPoissonRandom(0.5)
             elem.cost = 100
 
-        wasFixedInd = fixedInd
-        while not fixedInd:
-            elem.ind = random.randint(1, 264)
-            fixedInd = elem.ind not in [256, 257, 258]  # Broken index
-            # Fighter sword but crash
-            # TODO: check other high values?
+        elem.cost = max(
+            1, min(2 ** 16 - 1, random.randint(elem.cost // 2, 2 * elem.cost))
+        )
 
-        elem.cost = min(2 ** 16 - 1, random.randint(elem.cost // 2, 2 * elem.cost))
-
-        if randomizeCodes and not wasFixedInd:
-            elem.code = getRandomCode(elem.ind, config)
-        else:
+        if fixedInd:
             elem.code = getValidCode(elem.ind, elem.code)
+        else:
+            elem.ind, elem.code = randomizeChipAndCode(elem.ind, elem.code, config)
 
 
 def randomizeChipInfo(chip: ChipT_BN2, config: configparser.SectionProxy, ind: int):
@@ -202,18 +197,8 @@ def randomizeFolder(folder: ChipFolder, config: configparser.SectionProxy, ind: 
     if config.get(key):
         loadFolderFromFile(folder, config.get(key))
         return
-    randomizeFolder = config.getboolean("RandomizeFolder")
     for chip in folder.elems:
-        if randomizeFolder:
-            # Just use standard chips for now
-            chip.chip = random.randint(1, 193)
-            chip.code = getRandomCode(chip.chip, config)
-        else:
-            # Adjust the code even if we aren't otherwise randomizing
-            # the folders as otherwise folder/pack gets messed up.
-            # Note the tutorial folders still work fine even if the codes
-            # aren't among the actual possibilities
-            chip.code = getValidCode(chip.chip, chip.code)
+        chip.chip, chip.code = randomizeChipAndCode(chip.chip, chip.code, config)
 
 
 def randomizeChipAndCode(
@@ -221,8 +206,17 @@ def randomizeChipAndCode(
 ) -> Tuple[int, int]:
     randomizeChips = config.getboolean("RandomizeChips")
     randomizeCodes = config.getboolean("RandomizeCodes")
+
     if randomizeChips:
-        chip = random.randint(1, 265)
+        ub = 265
+        if config.name in ["GMD", "Shops"]:
+            # GMDs only support one byte and many higher code chips
+            # break in shops (at least KngtSwrd,FtrSword,Gospel chips)
+            ub = 255
+        if config.getboolean("OnlyStandardChips"):
+            ub = 193
+        chip = random.randint(1, ub)
+
     if randomizeCodes:
         code = getRandomCode(chip, config)
     else:
