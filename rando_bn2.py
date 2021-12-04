@@ -129,6 +129,13 @@ def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy, ind: i
             continue
         fixedInd = False
         if ind == 0 and forceStoryChips:
+            if i == 5:
+                elem.qty = 3
+                elem.type = 0x02
+                elem.ind = 111  # Guard
+                elem.code = 0x1A
+                elem.cost = 100
+                fixedInd = True
             if i == 6:
                 elem.qty = 3
                 elem.type = 0x02
