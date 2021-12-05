@@ -309,7 +309,7 @@ class VirusCategory(Enum):
             Generally you don't want to randomize navis into virus
             encounters
             """
-            return list(range(123, 178))
+            return list(range(123, 183))
         elif self == VirusCategory.Mole:
             return [41, 42]
         elif self == VirusCategory.Level1:
