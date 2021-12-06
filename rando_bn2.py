@@ -11,6 +11,8 @@ from bn2data import (
     ChipT_BN2,
     ChipFolder,
     GMD,
+    codeStr,
+    encodeCode,
 )
 from distribution import getPoissonRandom
 
@@ -19,10 +21,10 @@ def getRandomCode(ind: int, config: configparser.SectionProxy) -> int:
     starChance = config.getint("StarPercent", 20)
     rand = random.randint(0, 99)
     if rand < starChance:
-        return 0x1A
+        return encodeCode("*")
     choices = NameMaps.getValidCodes(ind)
     if len(choices) == 1:
-        return 0x1A
+        return encodeCode("*")
     else:
         return random.choice(choices[:-1])
 
@@ -110,6 +112,25 @@ def randomizeEncounters(data: bytearray, config: configparser.ConfigParser):
             encounter.serialize(data, writeOffset)
 
 
+def getStoryChips() -> List[Tuple[int, int]]:
+    """
+    'Story Chips' are chips that are necessary to progress the story for some reason.
+    """
+    data = (
+        # For Chng.bat
+        ("ZapRing2", "B"),
+        # For extra folder
+        ("BigBomb", "*"),
+        # For kid in Netopia Scenario
+        ("Guard", "*"),
+        # For a job
+        ("FireSwrd", "F"),
+        # For a job
+        ("Catcher", "N"),
+    )
+    return [(NameMaps.getChipInd(name), encodeCode(code)) for (name, code) in data]
+
+
 def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy, ind: int):
     if shop.isSubChipShop():
         return
@@ -120,6 +141,7 @@ def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy, ind: i
     cheapPowerUps = config.getboolean("CheapPowerUps")
     forceStoryChips = config.getboolean("ForceStoryChips")
     randomizeCodes = config.getboolean("RandomizeCodes")
+    storyChips = getStoryChips()
     for i, elem in enumerate(shop.elems):
         if elem.type == 0x01:
             if cheapPowerUps:
@@ -128,31 +150,23 @@ def randomizeShop(shop: ShopInventory, config: configparser.SectionProxy, ind: i
         if elem.qty == 0xFF and not randomizeCodes:
             continue
         fixedInd = False
-        if ind == 0 and forceStoryChips:
-            if i == 5:
+        if forceStoryChips:
+            chip = None
+            if ind == 0 and i >= 5:
+                chip = storyChips[i - 5]
+            elif ind == 1 and i in (4, 5):
+                chip = storyChips[(i - 4) + 3]
+            if chip is not None:
                 elem.qty = 3
                 elem.type = 0x02
-                elem.ind = 111  # Guard
-                elem.code = 0x1A
-                elem.cost = 100
-                fixedInd = True
-            if i == 6:
-                elem.qty = 3
-                elem.type = 0x02
-                elem.ind = 66  # ZapRing2
-                elem.code = 0x01
-                elem.cost = 100
-                fixedInd = True
-            elif i == 7:
-                elem.qty = 3
-                elem.type = 0x02
-                elem.ind = 19  # BigBomb
-                elem.code = 0x1A
+                elem.ind = chip[0]
+                elem.code = chip[1]
                 elem.cost = 100
                 fixedInd = True
         elif elem.ind == 0 and i == minShopElements:
             return
-        elif elem.ind == 0:
+
+        if elem.ind == 0 and not fixedInd:
             elem.type = 0x02
             elem.qty = 1 + getPoissonRandom(0.5)
             elem.cost = 100
@@ -172,10 +186,13 @@ def randomizeChipInfo(chip: ChipT_BN2, config: configparser.SectionProxy, ind: i
 
     if randomizeCodes:
         assignedCodes = []
+        storyChips = getStoryChips()
         for i in range(0, 4):
-            if ind == 65 and i == 0:
-                # ZapRing2 B
-                codeToUse = 0x01
+            data = [cd for storyInd, cd in storyChips if storyInd == ind + 1]
+            if len(data) == 1 and codeStr(data[0]) != "*":
+                # If there is a non-star story chip, ensure that's a valid code
+                # for the chip
+                codeToUse = data[0]
             else:
                 while True:
                     codeToUse = random.randint(0, 0x19)

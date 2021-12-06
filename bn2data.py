@@ -84,6 +84,15 @@ def codeStr(code: int) -> str:
         return chr(ord("A") + code)
 
 
+def encodeCode(code: str) -> int:
+    if ord(code) >= ord("A") and ord(code) <= ord("Z"):
+        return ord(code) - ord("A")
+    elif code == "*":
+        return 0x1A
+    else:
+        raise KeyError("Only single char codes allowed")
+
+
 class ChipT_BN2:
     myStruct = struct.Struct("<6BH4B2H4B3I")
 
@@ -362,12 +371,16 @@ class NameMaps(object):
         cls.chipInfoMap = m
 
     @classmethod
-    def getValidCodes(cls, ind: int):
+    def getValidCodes(cls, ind: int) -> List[int]:
         return [code for code in NameMaps.chipInfoMap[ind - 1].codes if code != 0xFF]
 
     @classmethod
-    def getChipName(cls, ind: int):
-        return cls.chipNameMap.get(ind - 1, ind)
+    def getChipName(cls, ind: int) -> str:
+        return cls.chipNameMap.get(ind - 1, str(ind))
+
+    @classmethod
+    def getChipInd(cls, name: str) -> int:
+        return 1 + next(ind for ind, nm in cls.chipNameMap.items() if nm == name)
 
 
 class EncounterEntity(object):
